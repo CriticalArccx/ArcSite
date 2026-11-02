@@ -132,14 +132,14 @@ export default function MilestonesPage() {
     <section className="panel" id="milestones">
       <div className="panel-header">
         <div className="panel-header-left">
-          <h2 className="panel-title">Milestones</h2>
+          <h2 className="panel-title">Deliverables</h2>
           <span className="panel-count">{loading ? '—' : `${computed.length} tracked`}</span>
         </div>
         <div className="panel-header-right" style={{ gap: 10 }}>
           {canEdit && !formOpen && (
             <button type="button" className="panel-action-btn" onClick={openNew}>
               <Plus style={{ width: 15, height: 15 }} />
-              New Milestone
+              New Deliverable
             </button>
           )}
           <button
@@ -149,15 +149,15 @@ export default function MilestonesPage() {
             onClick={() => setSettingsOpen((v) => !v)}
           >
             <SettingsIcon style={{ width: 13, height: 13 }} />
-            Milestone Statuses
+            Deliverable Statuses
           </button>
-          <button className={loading ? 'icon-btn spin' : 'icon-btn'} title="Refresh" onClick={reload} aria-label="Refresh milestones">
+          <button className={loading ? 'icon-btn spin' : 'icon-btn'} title="Refresh" onClick={reload} aria-label="Refresh deliverables">
             <RefreshCw />
           </button>
         </div>
       </div>
       <div className="sync-note">
-        A milestone's % is computed automatically from its completion criteria — pulled live from
+        A deliverable's % is computed automatically from its completion criteria — pulled live from
         Checklists, Issues, Submittals, and NETA Tracker — not set by hand.
         {!canEdit ? ' · sign in as an authorized editor to add or edit' : ''}
       </div>
@@ -172,7 +172,7 @@ export default function MilestonesPage() {
         {loading && <div className="q-hint">Loading…</div>}
         {error && !loading && (
           <div className="table-error" style={{ padding: '16px 0' }}>
-            Couldn&apos;t load milestones ({error}).
+            Couldn&apos;t load deliverables ({error}).
             <br />
             <button className="retry-btn" onClick={reload}>
               Retry
@@ -211,7 +211,7 @@ export default function MilestonesPage() {
 
                 <div style={{ display: 'flex', gap: 10, marginTop: 8 }}>
                   <button className="seal-submit-btn" style={{ maxWidth: 200 }} disabled={saving} onClick={save}>
-                    {saving ? 'Saving…' : editingId ? 'Save Changes' : 'Save Milestone'}
+                    {saving ? 'Saving…' : editingId ? 'Save Changes' : 'Save Deliverable'}
                   </button>
                   <button className="wf-btn" style={{ padding: '0 16px' }} disabled={saving} onClick={closeForm}>
                     Cancel
@@ -222,7 +222,7 @@ export default function MilestonesPage() {
 
             {computed.length === 0 && !formOpen && (
               <div className="table-empty">
-                No milestones yet.{canEdit ? ' Click "New Milestone" to add the first one.' : ''}
+                No deliverables yet.{canEdit ? ' Click "New Deliverable" to add the first one.' : ''}
               </div>
             )}
 

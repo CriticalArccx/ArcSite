@@ -446,8 +446,9 @@ export default function AppShell() {
 
           {!isFullBleed && (
             <footer>
-              ArcApp Commissioning · {projectLabel(CURRENT_PROJECT)} · Milestones are sample data — To-Dos
-              read live from arcapp_tasks and Scheduled Activities from {SOURCE_LABEL}
+              ArcApp Commissioning · {projectLabel(CURRENT_PROJECT)} · Deliverables are computed live
+              from their completion criteria, To-Dos read live from arcapp_tasks, and Scheduled
+              Activities from {SOURCE_LABEL}
             </footer>
           )}
         </main>

@@ -31,7 +31,7 @@ export default function KpiRow({ milestones, todos, extraOpenCount, scheduleRows
   const milestoneSubClass = milestones.length === 0 ? '' : attentionCount > 0 ? (milestones.some((m) => m.progress.status === 'hold') ? 'bad' : 'warn') : 'good'
   const milestoneSub =
     milestones.length === 0
-      ? 'No milestones entered yet'
+      ? 'No deliverables entered yet'
       : attentionCount > 0
         ? `${attentionCount} need${attentionCount === 1 ? 's' : ''} attention`
         : completeCount === milestones.length
@@ -51,7 +51,7 @@ export default function KpiRow({ milestones, todos, extraOpenCount, scheduleRows
   return (
     <div className="kpi-row">
       <div className="kpi">
-        <div className="kpi-label">Milestones GO</div>
+        <div className="kpi-label">Deliverables GO</div>
         <div className="kpi-value">
           {milestones.length === 0 ? (
             '—'
@@ -74,7 +74,7 @@ export default function KpiRow({ milestones, todos, extraOpenCount, scheduleRows
         <div className="kpi-sub">{disciplines > 0 ? `${disciplines} discipline${disciplines === 1 ? '' : 's'} active` : 'Nothing scheduled'}</div>
       </div>
       <div className="kpi clock">
-        <div className="kpi-label">Next milestone</div>
+        <div className="kpi-label">Next deliverable</div>
         {upcoming && upcomingDays !== null ? (
           <>
             <div className="kpi-value">
@@ -93,7 +93,7 @@ export default function KpiRow({ milestones, todos, extraOpenCount, scheduleRows
         ) : (
           <>
             <div className="kpi-value">—</div>
-            <div className="kpi-sub">No upcoming milestones</div>
+            <div className="kpi-sub">No upcoming deliverables</div>
           </>
         )}
       </div>

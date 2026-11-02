@@ -62,7 +62,7 @@ export default function DashboardPage() {
     <>
       <div className="page-heading">
         <h1>Mission Dashboard</h1>
-        <p>Your checklist, milestones, and live activity feed for {projectLabel(CURRENT_PROJECT)}.</p>
+        <p>Your checklist, deliverables, and live activity feed for {projectLabel(CURRENT_PROJECT)}.</p>
       </div>
 
       <KpiRow milestones={milestoneRows} todos={myTodos} extraOpenCount={myItems.length + mySummaries.length} scheduleRows={ctx.rows} />

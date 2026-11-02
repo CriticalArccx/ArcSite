@@ -44,11 +44,11 @@ export default function MilestonesPanel({ milestones, onExpand }: { milestones: 
     <section className="panel" id="milestones">
       <div className="panel-header">
         <div className="panel-header-left">
-          <h2 className="panel-title">Milestones</h2>
+          <h2 className="panel-title">Deliverables</h2>
           <span className="panel-count">{milestones.length} tracked</span>
         </div>
         <div className="panel-header-right">
-          <button className="icon-btn" title="Expand" onClick={onExpand} aria-label="Expand milestones">
+          <button className="icon-btn" title="Expand" onClick={onExpand} aria-label="Expand deliverables">
             <Maximize2 />
           </button>
         </div>

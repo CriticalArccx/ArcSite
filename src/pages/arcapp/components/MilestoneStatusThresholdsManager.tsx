@@ -58,9 +58,9 @@ export default function MilestoneStatusThresholdsManager({ value, canEdit, loadi
 
   return (
     <div style={{ marginTop: 26, maxWidth: 640 }}>
-      <p className="wf-subtitle">Milestone Status Thresholds</p>
+      <p className="wf-subtitle">Deliverable Status Thresholds</p>
       <div className="q-hint" style={{ marginTop: 0, marginBottom: 10 }}>
-        A milestone's computed % maps to a status: Complete at or above the first value, else Go at
+        A deliverable's computed % maps to a status: Complete at or above the first value, else Go at
         or above the second, else Caution at or above the third, else Hold. Keep them in descending
         order (Complete ≥ Go ≥ Caution) or the result gets hard to predict.
       </div>

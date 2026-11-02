@@ -51,10 +51,10 @@ export default function MilestoneStatusStylesManager({ value, canEdit, loading, 
 
   return (
     <div style={{ marginTop: 22, maxWidth: 640 }}>
-      <p className="wf-subtitle">Milestone Status Labels &amp; Colors</p>
+      <p className="wf-subtitle">Deliverable Status Labels &amp; Colors</p>
       <div className="q-hint" style={{ marginTop: 0, marginBottom: 10 }}>
         What each status bucket is called and what color it shows as — the thresholds above decide
-        which bucket a milestone falls into, this just controls how that bucket looks.
+        which bucket a deliverable falls into, this just controls how that bucket looks.
       </div>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
         {ORDER.map((key) => (

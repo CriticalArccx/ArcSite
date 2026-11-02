@@ -20,7 +20,7 @@ import { hasCapability, type Capability } from '../../../lib/project'
 const NAV: Array<{ to: string; label: string; icon: typeof LayoutDashboard; requires?: Capability }> = [
   { to: '/', label: 'Dashboard', icon: LayoutDashboard },
   { to: '/todo', label: 'To-Do', icon: CheckSquare },
-  { to: '/milestones', label: 'Milestones', icon: Flag },
+  { to: '/milestones', label: 'Deliverables', icon: Flag },
   { to: '/schedule', label: 'Activities', icon: CalendarDays },
   { to: '/checklists', label: 'Checklists', icon: ListChecks, requires: 'cxAlloyActions' },
   { to: '/issues', label: 'Issues', icon: AlertTriangle, requires: 'cxAlloyActions' },

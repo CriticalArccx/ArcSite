@@ -545,10 +545,12 @@ Systems in commissioning, Next milestone) were hardcoded literals, never wired u
 features they describe became real. Fixed 2026-10-29, same inputs `DashboardPage.tsx` already had
 on hand for its other widgets — no new fetches:
 
-- **Milestones GO**: `{count with progress.status === 'go'} / {total milestones}`, from the same
+- **Deliverables GO** (tile label changed 2026-11-02 — see "Milestones → Deliverables" below;
+  everything underneath still reads from the `Milestone`/`milestones` types and tables, unchanged):
+  `{count with progress.status === 'go'} / {total milestones}`, from the same
   `useMilestonesWithProgress` call `MilestonesPanel`'s widget uses — never disagrees with the
-  Milestones page. Sub-line counts Caution/Hold milestones as "need attention" (red dot if any are
-  Hold, amber if only Caution, green "All on track"/"All complete" otherwise).
+  Deliverables page. Sub-line counts Caution/Hold milestones as "need attention" (red dot if any
+  are Hold, amber if only Caution, green "All on track"/"All complete" otherwise).
 - **Open to-dos**: `todos.filter(t => !t.done).length + extraOpenCount` — the exact same formula
   `TodoPanel.tsx`'s own header count uses, given the exact same `myTodos`/`extraOpenCount` props, so
   this tile can't drift from what "Your To-Dos" shows. Sub-line counts how many are due today (or
@@ -557,12 +559,21 @@ on hand for its other widgets — no new fetches:
   concrete here) — a plain count of `ctx.rows`, the same Schedule rows `SchedulePanel` below it is
   already showing for whichever day is selected. Sub-line counts distinct `trade` values among them
   ("3 disciplines active" / "Nothing scheduled").
-- **Next milestone**: the soonest `dueDate` among milestones not yet at `complete` status, sourced
-  from that same `useMilestonesWithProgress` list — "T−NND" countdown, "Today", or "NND late" once
-  past due, with the milestone's name underneath. Red sub-line once due or overdue, amber inside 3
-  days, otherwise neutral; "No upcoming milestones" when none have a due date or all are complete.
+- **Next deliverable**: the soonest `dueDate` among milestones not yet at `complete` status,
+  sourced from that same `useMilestonesWithProgress` list — "T−NND" countdown, "Today", or "NND
+  late" once past due, with the deliverable's name underneath. Red sub-line once due or overdue,
+  amber inside 3 days, otherwise neutral; "No upcoming deliverables" when none have a due date or
+  all are complete.
 
-## Milestones — criteria-driven progress, not hand-set
+## Milestones → Deliverables — criteria-driven progress, not hand-set
+
+**Nomenclature note (2026-11-02):** this module's user-facing name changed from "Milestones" to
+"Deliverables" — the Sidebar nav item, page heading, button labels, and KPI tiles all say
+"Deliverable(s)" now. Nothing underneath was renamed: the TypeScript type is still `Milestone`, the
+table is still `arcapp_milestones`, the page file is still `MilestonesPage.tsx`, settings keys are
+still `milestone_*`, and so on — this was a surface-level rename of what people read, not the data
+model, to keep the change small and low-risk. The rest of this section (and the one above) still
+say "milestone" throughout for exactly that reason — read it as "deliverable" wherever it appears.
 
 Used to be entirely fake: `sampleData.ts` hardcoded six milestones with a hand-picked pct/status,
 rendered read-only on the Dashboard and the Milestones page (now deleted — nothing reads it

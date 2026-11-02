@@ -67,7 +67,7 @@ export default function MilestoneCriteriaBuilder({
     <div className="form-field">
       <label>Completion criteria</label>
       <div className="q-hint" style={{ marginTop: 0, marginBottom: 10 }}>
-        This milestone's % is the average of every criterion below — each one checks how many of
+        This deliverable's % is the average of every criterion below — each one checks how many of
         the scoped items already sit in one of the target statuses. No criteria means no automatic
         progress yet.
       </div>
