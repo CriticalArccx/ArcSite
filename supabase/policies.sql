@@ -257,7 +257,7 @@ CREATE POLICY "milestones_write_authorized" ON arcapp_milestones
 
 
 -- =============================================================================
--- NOT YET APPLIED — per-project write authorization (requested 2026-11-02).
+-- APPLIED — per-project write authorization (requested 2026-11-02).
 --
 -- Pairs with arcapp_authorized_users.allowed_projects (schema.sql). `anon`'s access to the
 -- tables below was deliberately left wide open by earlier requests (Workflows, Teams/Tasks, Item

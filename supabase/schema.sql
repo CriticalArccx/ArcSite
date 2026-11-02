@@ -281,7 +281,7 @@ ALTER TABLE arcapp_tasks ADD CONSTRAINT arcapp_tasks_status_check CHECK (status 
 UPDATE arcapp_tasks SET status = 'done' WHERE done = true AND status <> 'done';
 
 -- ---------------------------------------------------------------------------
--- NOT YET APPLIED — arcapp_authorized_users.allowed_projects (requested 2026-11-02).
+-- APPLIED — arcapp_authorized_users.allowed_projects (requested 2026-11-02).
 --
 -- Closes a real gap: any authorized ArcApp user (admin or editor) could switch the Topbar project
 -- picker into STY4, SAN-NT1B, or RSE1A and read/write that project's data, regardless of which

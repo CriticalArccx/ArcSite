@@ -937,8 +937,9 @@ nothing to migrate) or a specific set. This is enforced in both places that matt
   `arcapp_item_assignments`/`arcapp_milestones`) now also calls the new
   `arcapp_user_allowed_project(project_key)` SQL function, so a signed-in session can't bypass the
   switcher and write into an unassigned project just by calling Supabase directly — see the
-  "NOT YET APPLIED — per-project write authorization" block at the end of `supabase/policies.sql`
-  (run it, plus the `allowed_projects` column added to `schema.sql`, against your project). `anon`
+  "per-project write authorization" block at the end of `supabase/policies.sql` (applied live
+  2026-11-02; confirmed via `pg_policies` that all 7 tables' authenticated-write policies now
+  reference the function). `anon`
   access (several of those tables are intentionally public/no-sign-in by earlier request — kiosk-
   style Workflows/Teams/Tasks/Item Assignments) is untouched — there's no email to check a roster
   against for an anonymous session, so that trade-off stands as it already was.
