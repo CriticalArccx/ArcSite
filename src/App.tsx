@@ -25,20 +25,20 @@ function SetupRequired() {
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        background: '#05070d',
-        color: '#eef1f8',
+        background: '#141718',
+        color: '#f3f2ee',
         fontFamily: 'monospace',
         padding: 24,
       }}
     >
       <div style={{ maxWidth: 640 }}>
         <h1 style={{ fontSize: 18, marginBottom: 12 }}>⚠ Supabase isn&apos;t configured yet</h1>
-        <p style={{ lineHeight: 1.6, color: '#8991b5' }}>
+        <p style={{ lineHeight: 1.6, color: '#b5afa2' }}>
           <code>VITE_SUPABASE_URL</code> and/or <code>VITE_SUPABASE_ANON_KEY</code> are missing or
           invalid. This used to cause a blank screen with no explanation — now it shows this
           instead.
         </p>
-        <ol style={{ lineHeight: 1.8, color: '#8991b5' }}>
+        <ol style={{ lineHeight: 1.8, color: '#b5afa2' }}>
           <li>
             Copy <code>.env.example</code> to <code>.env</code> in the project root.
           </li>

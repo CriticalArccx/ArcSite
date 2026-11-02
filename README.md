@@ -1066,6 +1066,52 @@ git push -u origin main
 
 (`.env` is already gitignored — don't commit real Supabase keys.)
 
+## Color palette — re-tuned to the org's shared Design System
+
+ArcApp's whole dark theme was re-tuned 2026-11-02 to the "Design System" Artifact shared in the
+organization (its `project/tokens.css`), replacing the previous from-scratch palette.
+
+- **Single-accent structure kept, by request.** The design system actually specifies Petrol
+  (`#0f5a60`, a dark teal) as the primary button/link color and reserves its "Arc Green"
+  (`#4ebd4f` — literally named for this app) for focus rings and selections only. Adopting that
+  split would have meant deciding where Petrol shows up everywhere green currently does — a much
+  bigger identity shift away from ArcApp's current all-green sci-fi look. Instead, `--green` (and
+  `--green-soft`/`--green-dim`/`--green-deep`, all derived from Arc Green) stays the single accent
+  everywhere it already was — only the exact shade changed, not the structure.
+- **Neutrals** (`--bg`/`--bg-elev`/`--border`/`--text`/etc.) moved from ArcApp's old cool blue-black
+  scale to the design system's warm charcoal one (its dark-mode `Page`/`Surface`/`Border` tokens).
+  This is the one part of the change that alters the app's overall mood more than the green swap
+  alone would — say if the warmer neutrals read wrong next to the still-blue starfield background
+  dots (`.starfield` in `src/arcapp.css`, deliberately left untouched — they're decorative, not part
+  of the token palette).
+  - The design system only defines three dark-mode neutrals (`Page`, `Surface`, `Border`) — it has
+    no dark equivalent for several tokens ArcApp needs (`--bg-elev-2`, `--border-strong`,
+    `--text`/`--text-muted`/`--text-faint`). Those were derived rather than invented from nothing:
+    `--text` reuses the design system's light-mode `Page` color (#f3f2ee), mirroring how its own
+    light-mode `Textprimary` already equals its dark-mode `Page` (#141718) — i.e. text and page
+    swap value between modes in the source system, so dark-mode text follows the same relationship;
+    `--bg-elev-2`/`--border-strong` continue the arithmetic step already visible between the design
+    system's `Page`→`Surface`/`Border` values; `--text-muted`/`--text-faint` are lightened versions
+    of its light-mode `Textsecondary`/`Textdisabled` (too dark to read on a dark background used
+    as-is) tuned to sit clearly between `--text` and `--border-strong`.
+  - **Amber/red** (caution/hold status colors) switched to the design system's workflow status
+    colors — its "in progress" chart color (`#f2c94c`) and "failure" chart color (`#ee8080`) — the
+    closest semantic match to ArcApp's existing caution/critical usage, rather than inventing new
+    ones.
+- **Everywhere this needed changing**: the token block in `src/arcapp.css`, the brand-mark SVG
+  gradient (`Topbar.tsx`, `SignInPage.tsx`, `public/icon.svg`), the hardcoded fallback colors in
+  `App.tsx`'s "Supabase isn't configured" screen and `ErrorBoundary.tsx` (both render outside the
+  main stylesheet's reach during a startup/crash state, so they carry their own copies of the same
+  values rather than reading CSS variables), `statusColor()` in `utils.ts`, and the
+  `DEFAULT_MILESTONE_STATUS_STYLES` fallback in `src/lib/api.ts` (only the *default* — any project
+  that already customized its milestone status colors via Settings keeps what it saved).
+  - `public/icon.svg`'s gradient changed, but the **rasterized PNGs don't regenerate
+    automatically** (`apple-touch-icon.png`/`icon-192.png`/`icon-512.png`/`favicon-32.png` — see
+    the iPad section below) — those still need a manual re-export from the updated SVG.
+- **Typography and spacing weren't touched** — the request was specifically about the color
+  palette, and the design system's Roboto-everywhere type scale would have meant losing ArcApp's
+  distinctive Orbitron display font, a bigger change than was asked for.
+
 ## iPad support & app icon
 
 The app is usable as a full-screen, installable iPad app, not just in Safari's browser chrome:

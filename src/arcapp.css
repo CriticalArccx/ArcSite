@@ -3,26 +3,35 @@
 /* The browser's default UA stylesheet gives <body> an 8px margin and leaves <html>/<body>/#root
    with no background — without this reset, that 8px shows through as a white/default-colored
    frame around the app on every page (only visible outside .arcapp's own background). */
-html, body, #root{ margin:0; padding:0; min-height:100%; background:#05070d; }
+html, body, #root{ margin:0; padding:0; min-height:100%; background:#141718; }
 
+/* Color tokens re-tuned 2026-11-02 to the org's shared Design System palette (its "Arc Green",
+   literally named for this app, becomes --green/--green-dim/--green-soft; the rest of its dark-mode
+   neutrals — Page/Border/Surface — replace ArcApp's old cool blue-black scale with its warm
+   charcoal one; tokens the design system doesn't define for dark mode, e.g. --bg-elev-2/
+   --border-strong/--text-muted, are derived to continue its own light↔dark value relationships
+   rather than invented from scratch). Kept ArcApp's existing single-accent structure (green as
+   both primary action and focus/selection color) rather than adopting the design system's separate
+   Petrol-primary/Green-accent split, by request — a smaller, more reversible change than a full
+   identity shift away from ArcApp's all-green look. */
 .arcapp{
-  --bg:#05070d;
-  --bg-elev:#0b0f1c;
-  --bg-elev-2:#111629;
-  --border:#1d2440;
-  --border-strong:#2c3560;
-  --text:#eef1f8;
-  --text-muted:#8991b5;
-  --text-faint:#565f84;
-  --green:#3fe382;
-  --green-soft:#8ff2ae;
-  --green-dim:#1c8a4c;
-  --green-deep:#0d3d24;
-  --green-tint:rgba(63,227,130,0.12);
-  --amber:#f0a840;
-  --amber-tint:rgba(240,168,64,0.14);
-  --red:#ff5c56;
-  --red-tint:rgba(255,92,86,0.14);
+  --bg:#141718;
+  --bg-elev:#1c1f21;
+  --bg-elev-2:#24272a;
+  --border:#35342f;
+  --border-strong:#5a5954;
+  --text:#f3f2ee;
+  --text-muted:#b5afa2;
+  --text-faint:#8a867c;
+  --green:#4ebd4f;
+  --green-soft:#8cd48d;
+  --green-dim:#358537;
+  --green-deep:#205021;
+  --green-tint:rgba(78,189,79,0.12);
+  --amber:#f2c94c;
+  --amber-tint:rgba(242,201,76,0.14);
+  --red:#ee8080;
+  --red-tint:rgba(238,128,128,0.14);
   --font-display:'Orbitron',sans-serif;
   --font-body:'Inter',sans-serif;
   --font-mono:'JetBrains Mono',monospace;

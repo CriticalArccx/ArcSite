@@ -25,8 +25,8 @@ export default class ErrorBoundary extends Component<Props, State> {
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            background: '#05070d',
-            color: '#eef1f8',
+            background: '#141718',
+            color: '#f3f2ee',
             fontFamily: 'monospace',
             padding: 24,
           }}
@@ -36,9 +36,9 @@ export default class ErrorBoundary extends Component<Props, State> {
             <pre
               style={{
                 whiteSpace: 'pre-wrap',
-                color: '#ff5c56',
-                background: '#111629',
-                border: '1px solid #1d2440',
+                color: '#ee8080',
+                background: '#24272a',
+                border: '1px solid #35342f',
                 borderRadius: 8,
                 padding: 14,
                 fontSize: 12.5,
@@ -46,7 +46,7 @@ export default class ErrorBoundary extends Component<Props, State> {
             >
               {this.state.error.message}
             </pre>
-            <p style={{ color: '#8991b5' }}>Full details are in the browser console (F12).</p>
+            <p style={{ color: '#b5afa2' }}>Full details are in the browser console (F12).</p>
           </div>
         </div>
       )

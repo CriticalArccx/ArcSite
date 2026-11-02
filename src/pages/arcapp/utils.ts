@@ -45,8 +45,8 @@ export function scheduleStatusClass(text: string): string {
 }
 
 export function statusColor(status: string): string {
-  const map: Record<string, string> = { go: '#3fe382', caution: '#f0a840', hold: '#ff5c56', complete: '#3fe382' }
-  return map[status] ?? '#3fe382'
+  const map: Record<string, string> = { go: '#4ebd4f', caution: '#f2c94c', hold: '#ee8080', complete: '#4ebd4f' }
+  return map[status] ?? '#4ebd4f'
 }
 
 // Clean 2-decimal-max display without trailing zeros (1.00 -> 1, 1.25 -> 1.25).

@@ -1288,10 +1288,10 @@ export type AppSettings = {
 export type MilestoneStatusStyle = { label: string; color: string }
 export type MilestoneStatusStyles = Record<Milestone['status'], MilestoneStatusStyle>
 export const DEFAULT_MILESTONE_STATUS_STYLES: MilestoneStatusStyles = {
-  complete: { label: 'COMPLETE', color: '#3fe382' },
-  go: { label: 'GO', color: '#3fe382' },
-  caution: { label: 'CAUTION', color: '#f0a840' },
-  hold: { label: 'HOLD', color: '#ff5c56' },
+  complete: { label: 'COMPLETE', color: '#4ebd4f' },
+  go: { label: 'GO', color: '#4ebd4f' },
+  caution: { label: 'CAUTION', color: '#f2c94c' },
+  hold: { label: 'HOLD', color: '#ee8080' },
 }
 const SETTINGS_DEFAULTS = {
   checklistReadyStatuses: ['Finished'],

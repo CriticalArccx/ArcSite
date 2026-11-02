@@ -56,11 +56,11 @@ export default function Topbar({ userName, userInitials, onAuthClick }: TopbarPr
         <div className="brand-mark">
           <svg viewBox="0 0 100 100" width="38" height="38">
             <path d="M14 66 A36 36 0 0 1 86 66" fill="none" stroke="url(#arcGrad)" strokeWidth="8" strokeLinecap="round" />
-            <circle cx="50" cy="30" r="3.4" fill="#8ff2ae" />
+            <circle cx="50" cy="30" r="3.4" fill="#8cd48d" />
             <defs>
               <linearGradient id="arcGrad" x1="0" y1="0" x2="1" y2="0">
-                <stop offset="0%" stopColor="#8ff2ae" />
-                <stop offset="100%" stopColor="#1c8a4c" />
+                <stop offset="0%" stopColor="#8cd48d" />
+                <stop offset="100%" stopColor="#358537" />
               </linearGradient>
             </defs>
           </svg>
