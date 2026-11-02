@@ -2,6 +2,8 @@ import { useEffect, useState, useCallback, useRef } from 'react'
 import type { User as SupabaseUser } from '@supabase/supabase-js'
 import { supabase } from './supabaseClient'
 import type { UserRole } from './api'
+import { CURRENT_PROJECT, isProjectKey, setCurrentProject } from './project'
+import type { ProjectKey } from './project'
 
 export type CurrentUser = {
   id: string
@@ -15,6 +17,11 @@ export type CurrentUser = {
    * own separate is_admin/role columns for a different purpose — edit rights on the CxAlloy-shared
    * side of things). */
   role: UserRole
+  /** From arcapp_authorized_users.allowed_projects — null means every project (PROJECTS in
+   * project.ts), a non-null array restricts this person to just those. Used by Topbar's project
+   * switcher to only list what this person can actually reach; the server-side half of this same
+   * restriction lives in RLS (arcapp_user_allowed_project() in supabase/policies.sql). */
+  allowedProjects: ProjectKey[] | null
 }
 
 function toRawUser(u: SupabaseUser | null): { id: string; email: string; firstName: string; lastName: string; googleName: string } | null {
@@ -69,7 +76,12 @@ export function useCurrentUser(): {
       checking.current = true
       try {
         const email = base.email.toLowerCase().trim()
-        const res = await supabase.from('arcapp_authorized_users').select('name, role').ilike('email', email).limit(1).maybeSingle()
+        const res = await supabase
+          .from('arcapp_authorized_users')
+          .select('name, role, allowed_projects')
+          .ilike('email', email)
+          .limit(1)
+          .maybeSingle()
         if (cancelled) return
         if (res.error) throw new Error(res.error.message)
         if (!res.data) {
@@ -79,7 +91,27 @@ export function useCurrentUser(): {
           await supabase.auth.signOut()
           return
         }
-        const row = res.data as { name: string | null; role: string | null }
+        const row = res.data as { name: string | null; role: string | null; allowed_projects: string[] | null }
+        const rawAllowed = Array.isArray(row.allowed_projects) ? row.allowed_projects.filter(isProjectKey) : null
+        // Empty array (every entry pruned, or an admin genuinely assigned zero projects) means
+        // "authorized for ArcApp but not let into any site" — a real state, not a bug, so it gets
+        // its own clear message rather than silently falling back to "all projects".
+        if (rawAllowed && rawAllowed.length === 0) {
+          setAuthError(`${base.email} is authorized for ArcApp but isn't assigned to any project yet. Contact an administrator.`)
+          setUser(null)
+          setLoading(false)
+          await supabase.auth.signOut()
+          return
+        }
+        // Signed in fine, but the project this browser last had selected (CURRENT_PROJECT, read
+        // from localStorage at module load — see project.ts) isn't one this person can reach.
+        // Rather than showing them someone else's project, switch them straight into one they can
+        // — setCurrentProject reloads the page, so this request's `user`/`loading` state doesn't
+        // need settling; the reload re-runs this whole check against the new project.
+        if (rawAllowed && !rawAllowed.includes(CURRENT_PROJECT)) {
+          setCurrentProject(rawAllowed[0])
+          return
+        }
         setAuthError(null)
         setUser({
           id: base.id,
@@ -88,6 +120,7 @@ export function useCurrentUser(): {
           lastName: base.lastName,
           name: row.name || base.googleName || `${base.firstName} ${base.lastName}`.trim() || base.email,
           role: row.role === 'admin' ? 'admin' : 'editor',
+          allowedProjects: rawAllowed,
         })
         setLoading(false)
       } catch (err) {

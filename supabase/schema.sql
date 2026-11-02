@@ -279,3 +279,29 @@ CREATE TABLE IF NOT EXISTS arcapp_milestones (
 ALTER TABLE arcapp_tasks ADD COLUMN IF NOT EXISTS status text NOT NULL DEFAULT 'todo';
 ALTER TABLE arcapp_tasks ADD CONSTRAINT arcapp_tasks_status_check CHECK (status IN ('todo','in_progress','done'));
 UPDATE arcapp_tasks SET status = 'done' WHERE done = true AND status <> 'done';
+
+-- ---------------------------------------------------------------------------
+-- NOT YET APPLIED — arcapp_authorized_users.allowed_projects (requested 2026-11-02).
+--
+-- Closes a real gap: any authorized ArcApp user (admin or editor) could switch the Topbar project
+-- picker into STY4, SAN-NT1B, or RSE1A and read/write that project's data, regardless of which
+-- site they actually work on — sign-in only ever checked "is this email on the roster at all,"
+-- never "which project(s) is this email for." See project.ts's CAPABILITIES comment and
+-- policies.sql's old "Isolation between projects is enforced entirely app-side" note for how that
+-- was previously a deliberate, documented trade-off, not an oversight — it no longer is.
+--
+-- NULL (the default — nothing to backfill, every existing row already behaves exactly as before)
+-- means unrestricted, same as today: every project in PROJECTS (project.ts). A non-null array
+-- restricts that person to just those project_key values. Not a foreign key / CHECK against a
+-- fixed list on purpose — PROJECTS grows over time (RSE1A was just added), and this table
+-- shouldn't need a migration every time a new project does.
+--
+-- Enforced in two places: client-side, Topbar's project switcher only lists what the signed-in
+-- user's allowedProjects allows (src/lib/useCurrentUser.ts, Topbar.tsx) and auto-redirects them
+-- into an allowed project if their last-selected one (CURRENT_PROJECT, from localStorage) isn't
+-- one of them; server-side, every project_key-scoped table's write policy now also calls
+-- arcapp_user_allowed_project() (see policies.sql) so a signed-in session can't bypass the switcher
+-- and write into a project it isn't assigned to just by calling Supabase directly.
+-- ---------------------------------------------------------------------------
+
+ALTER TABLE arcapp_authorized_users ADD COLUMN IF NOT EXISTS allowed_projects text[];

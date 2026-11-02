@@ -226,12 +226,16 @@ CREATE POLICY "item_assignments_write_public" ON arcapp_item_assignments
 
 -- =============================================================================
 -- APPLIED — SAN-NT1B project switcher's `project_key` columns (see schema.sql). No new policies
--- needed: every existing policy on arcapp_settings/tasks/teams/submittals/workflows/
--- item_assignments already grants access with `USING (true)` (or an editor check that doesn't
--- reference any column value) — none of them restrict by column, so adding project_key doesn't
--- change what a policy allows. Isolation between projects is enforced entirely app-side, by every
--- query in src/lib/api.ts filtering/stamping `.eq('project_key', CURRENT_PROJECT)` — same as how
--- this app was already trusting itself (not RLS) to keep e.g. one submittal's assets list correct.
+-- needed at the time: every existing policy on arcapp_settings/tasks/teams/submittals/workflows/
+-- item_assignments already granted access with `USING (true)` (or an editor check that didn't
+-- reference any column value), so isolation between projects was enforced entirely app-side, by
+-- every query in src/lib/api.ts filtering/stamping `.eq('project_key', CURRENT_PROJECT)`.
+--
+-- SUPERSEDED 2026-11-02 — that trade-off let any authenticated ArcApp user write to ANY project's
+-- data by simply calling Supabase directly with a different project_key, bypassing the Topbar
+-- switcher entirely (the switcher is just UI). See the per-project write-authorization block below
+-- for the fix: every one of these tables' authenticated-write policies now also requires
+-- arcapp_user_allowed_project(project_key).
 -- =============================================================================
 
 
@@ -250,3 +254,89 @@ CREATE POLICY "milestones_write_authorized" ON arcapp_milestones
   FOR ALL TO authenticated
   USING (is_arcapp_authorized())
   WITH CHECK (is_arcapp_authorized());
+
+
+-- =============================================================================
+-- NOT YET APPLIED — per-project write authorization (requested 2026-11-02).
+--
+-- Pairs with arcapp_authorized_users.allowed_projects (schema.sql). `anon`'s access to the
+-- tables below was deliberately left wide open by earlier requests (Workflows, Teams/Tasks, Item
+-- Assignments — "no sign-in required" kiosk-style use) and is NOT changed here — anon has no email
+-- to check a roster against in the first place, and restricting it would just break that. What
+-- changes is `authenticated`: a signed-in ArcApp session can no longer write a row for a
+-- project_key its own allowed_projects doesn't include, closing the gap the comment above this
+-- block used to describe as an accepted trade-off.
+--
+-- Every policy touched here is DROP + CREATE (not a fresh name) so re-running this file is safe
+-- and doesn't leave the old, wider policy active alongside the new one.
+-- =============================================================================
+
+CREATE OR REPLACE FUNCTION arcapp_user_allowed_project(p text) RETURNS boolean
+LANGUAGE sql SECURITY DEFINER STABLE SET search_path = public
+AS $$
+  SELECT EXISTS (
+    SELECT 1 FROM arcapp_authorized_users a
+    WHERE lower(a.email) = lower(auth.jwt() ->> 'email')
+      AND (a.allowed_projects IS NULL OR p = ANY(a.allowed_projects))
+  )
+$$;
+
+GRANT EXECUTE ON FUNCTION arcapp_user_allowed_project(text) TO authenticated, anon;
+
+-- arcapp_settings — admin-only already; now also project-scoped.
+DROP POLICY IF EXISTS "settings_write_admins" ON arcapp_settings;
+CREATE POLICY "settings_write_admins" ON arcapp_settings
+  FOR ALL TO authenticated
+  USING (is_arcapp_admin() AND arcapp_user_allowed_project(project_key))
+  WITH CHECK (is_arcapp_admin() AND arcapp_user_allowed_project(project_key));
+
+-- arcapp_workflows — was one combined anon+authenticated policy; split so anon keeps its existing
+-- unrestricted access and only the authenticated half gains the project check.
+DROP POLICY IF EXISTS "workflows_write_public" ON arcapp_workflows;
+CREATE POLICY "workflows_write_public_anon" ON arcapp_workflows
+  FOR ALL TO anon USING (true) WITH CHECK (true);
+CREATE POLICY "workflows_write_authenticated" ON arcapp_workflows
+  FOR ALL TO authenticated
+  USING (arcapp_user_allowed_project(project_key))
+  WITH CHECK (arcapp_user_allowed_project(project_key));
+
+-- arcapp_teams — same split as arcapp_workflows above.
+DROP POLICY IF EXISTS "teams_write_public" ON arcapp_teams;
+CREATE POLICY "teams_write_public_anon" ON arcapp_teams
+  FOR ALL TO anon USING (true) WITH CHECK (true);
+CREATE POLICY "teams_write_authenticated" ON arcapp_teams
+  FOR ALL TO authenticated
+  USING (arcapp_user_allowed_project(project_key))
+  WITH CHECK (arcapp_user_allowed_project(project_key));
+
+-- arcapp_tasks — same split as arcapp_workflows above.
+DROP POLICY IF EXISTS "tasks_write_public" ON arcapp_tasks;
+CREATE POLICY "tasks_write_public_anon" ON arcapp_tasks
+  FOR ALL TO anon USING (true) WITH CHECK (true);
+CREATE POLICY "tasks_write_authenticated" ON arcapp_tasks
+  FOR ALL TO authenticated
+  USING (arcapp_user_allowed_project(project_key))
+  WITH CHECK (arcapp_user_allowed_project(project_key));
+
+-- arcapp_item_assignments — same split as arcapp_workflows above.
+DROP POLICY IF EXISTS "item_assignments_write_public" ON arcapp_item_assignments;
+CREATE POLICY "item_assignments_write_public_anon" ON arcapp_item_assignments
+  FOR ALL TO anon USING (true) WITH CHECK (true);
+CREATE POLICY "item_assignments_write_authenticated" ON arcapp_item_assignments
+  FOR ALL TO authenticated
+  USING (arcapp_user_allowed_project(project_key))
+  WITH CHECK (arcapp_user_allowed_project(project_key));
+
+-- arcapp_submittals — already authenticated-only; add the project check alongside is_arcapp_authorized().
+DROP POLICY IF EXISTS "submittals_write_authorized" ON arcapp_submittals;
+CREATE POLICY "submittals_write_authorized" ON arcapp_submittals
+  FOR ALL TO authenticated
+  USING (is_arcapp_authorized() AND arcapp_user_allowed_project(project_key))
+  WITH CHECK (is_arcapp_authorized() AND arcapp_user_allowed_project(project_key));
+
+-- arcapp_milestones — already authenticated-only; add the project check alongside is_arcapp_authorized().
+DROP POLICY IF EXISTS "milestones_write_authorized" ON arcapp_milestones;
+CREATE POLICY "milestones_write_authorized" ON arcapp_milestones
+  FOR ALL TO authenticated
+  USING (is_arcapp_authorized() AND arcapp_user_allowed_project(project_key))
+  WITH CHECK (is_arcapp_authorized() AND arcapp_user_allowed_project(project_key));

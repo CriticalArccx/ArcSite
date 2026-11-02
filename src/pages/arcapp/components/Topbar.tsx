@@ -1,16 +1,23 @@
 import { useEffect, useRef, useState } from 'react'
 import { ChevronDown } from 'lucide-react'
 import { CURRENT_PROJECT, PROJECTS, projectLabel, setCurrentProject } from '../../../lib/project'
+import type { ProjectKey } from '../../../lib/project'
 
 type TopbarProps = {
   userName: string | null
   userInitials: string
+  /** null = every project (PROJECTS); a non-null array restricts the switcher to just those — see
+   * CurrentUser.allowedProjects in useCurrentUser.ts. Server-side writes are restricted the same
+   * way via RLS, so this isn't just cosmetic — it's the one place in the UI someone would otherwise
+   * be able to reach a project they're not assigned to from. */
+  allowedProjects: ProjectKey[] | null
   onAuthClick: () => void
 }
 
-function ProjectSwitcher() {
+function ProjectSwitcher({ allowedProjects }: { allowedProjects: ProjectKey[] | null }) {
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
+  const options = allowedProjects === null ? PROJECTS : PROJECTS.filter((p) => allowedProjects.includes(p.key))
 
   useEffect(() => {
     function onDocClick(e: MouseEvent) {
@@ -20,6 +27,16 @@ function ProjectSwitcher() {
     return () => document.removeEventListener('mousedown', onDocClick)
   }, [])
 
+  // Nothing to switch between — render the current project as a plain, non-interactive label
+  // instead of a dropdown with one disabled-looking option.
+  if (options.length <= 1) {
+    return (
+      <div className="site-chip" style={{ cursor: 'default' }}>
+        <span className="led" /> {projectLabel(CURRENT_PROJECT)}
+      </div>
+    )
+  }
+
   return (
     <div className="project-switcher" ref={ref}>
       <button type="button" className="site-chip" onClick={() => setOpen((v) => !v)} aria-haspopup="listbox" aria-expanded={open}>
@@ -28,7 +45,7 @@ function ProjectSwitcher() {
       </button>
       {open && (
         <div className="project-switcher-menu" role="listbox">
-          {PROJECTS.map((p) => (
+          {options.map((p) => (
             <button
               key={p.key}
               type="button"
@@ -49,7 +66,7 @@ function ProjectSwitcher() {
   )
 }
 
-export default function Topbar({ userName, userInitials, onAuthClick }: TopbarProps) {
+export default function Topbar({ userName, userInitials, allowedProjects, onAuthClick }: TopbarProps) {
   return (
     <div className="topbar">
       <div className="brand">
@@ -74,7 +91,7 @@ export default function Topbar({ userName, userInitials, onAuthClick }: TopbarPr
       </div>
 
       <div className="topbar-right">
-        <ProjectSwitcher />
+        <ProjectSwitcher allowedProjects={allowedProjects} />
         <div
           className={userName ? 'auth-pill signed-in' : 'auth-pill'}
           title={userName ? `Signed in as ${userName} — click to sign out` : 'Click to sign in'}

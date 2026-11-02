@@ -2,8 +2,23 @@ import { useEffect, useState } from 'react'
 import { Plus, Trash2, Users } from 'lucide-react'
 import { useGetAuthorizedUsers, useSaveAuthorizedUser, useBulkAddAuthorizedUsers, useDeleteAuthorizedUser } from '../../../lib/api'
 import type { AuthorizedUser, UserRole } from '../../../lib/api'
+import { PROJECTS } from '../../../lib/project'
+import type { ProjectKey } from '../../../lib/project'
+import FilterButtonGroup, { ALL, toggleFilterValue } from './FilterButtonGroup'
 
 type Props = { canEdit: boolean }
+
+const PROJECT_OPTIONS = [ALL, ...PROJECTS.map((p) => p.key)]
+
+/** `null` (unrestricted) <-> {All}; a specific array <-> that array as a Set — same {All}-sentinel
+ * convention FilterButtonGroup/toggleFilterValue already use elsewhere, reused here so "who can
+ * sign in" and "which projects can they touch" share one interaction pattern. */
+function toProjectSet(allowedProjects: ProjectKey[] | null): Set<string> {
+  return allowedProjects === null ? new Set([ALL]) : new Set(allowedProjects)
+}
+function fromProjectSet(set: Set<string>): ProjectKey[] | null {
+  return set.has(ALL) ? null : (Array.from(set) as ProjectKey[])
+}
 
 type ParsedLine = { email: string; name: string; role: UserRole }
 
@@ -50,10 +65,12 @@ export default function AuthorizedUsersManager({ canEdit }: Props) {
   const [email, setEmail] = useState('')
   const [name, setName] = useState('')
   const [role, setRole] = useState<UserRole>('editor')
+  const [projectsDraft, setProjectsDraft] = useState<Set<string>>(new Set([ALL]))
   const [formError, setFormError] = useState('')
   const [saving, setSaving] = useState(false)
   const [deleteId, setDeleteId] = useState<string | null>(null)
   const [roleSavingId, setRoleSavingId] = useState<string | null>(null)
+  const [projectsSavingId, setProjectsSavingId] = useState<string | null>(null)
 
   const [bulkOpen, setBulkOpen] = useState(false)
   const [bulkText, setBulkText] = useState('')
@@ -81,10 +98,11 @@ export default function AuthorizedUsersManager({ canEdit }: Props) {
     setSaving(true)
     setFormError('')
     try {
-      await saveFn.trigger({ email: trimmed, name: name.trim(), role }).result
+      await saveFn.trigger({ email: trimmed, name: name.trim(), role, allowedProjects: fromProjectSet(projectsDraft) }).result
       setEmail('')
       setName('')
       setRole('editor')
+      setProjectsDraft(new Set([ALL]))
       void listFn.trigger()
     } catch (err) {
       setFormError('Failed to add: ' + (err instanceof Error ? err.message : String(err)))
@@ -121,12 +139,24 @@ export default function AuthorizedUsersManager({ canEdit }: Props) {
     if (nextRole === u.role) return
     setRoleSavingId(u.id)
     try {
-      await saveFn.trigger({ id: u.id, email: u.email, name: u.name, role: nextRole }).result
+      await saveFn.trigger({ id: u.id, email: u.email, name: u.name, role: nextRole, allowedProjects: u.allowedProjects }).result
       void listFn.trigger()
     } catch (err) {
       window.alert('Failed to change role: ' + (err instanceof Error ? err.message : String(err)))
     } finally {
       setRoleSavingId(null)
+    }
+  }
+
+  async function changeProjects(u: AuthorizedUser, nextProjects: ProjectKey[] | null) {
+    setProjectsSavingId(u.id)
+    try {
+      await saveFn.trigger({ id: u.id, email: u.email, name: u.name, role: u.role, allowedProjects: nextProjects }).result
+      void listFn.trigger()
+    } catch (err) {
+      window.alert('Failed to change project access: ' + (err instanceof Error ? err.message : String(err)))
+    } finally {
+      setProjectsSavingId(null)
     }
   }
 
@@ -147,9 +177,11 @@ export default function AuthorizedUsersManager({ canEdit }: Props) {
     <div style={{ marginTop: 26 }}>
       <p className="wf-subtitle">Authorized Users</p>
       <div className="q-hint" style={{ marginTop: 0, marginBottom: 12 }}>
-        Only these emails can sign in to ArcApp at all (Google or magic link) — this list, and each
-        person's role here, is the entire access-control model for the site now. <b style={{ color: 'var(--text)' }}>Admin</b> can
-        change Settings (including this list); <b style={{ color: 'var(--text)' }}>Editor</b> can do everything else but not that.
+        Only these emails can sign in to ArcApp at all (Google or magic link) — this list, each
+        person's role, and which projects they can reach is the entire access-control model for the
+        site now. <b style={{ color: 'var(--text)' }}>Admin</b> can change Settings (including this list); <b style={{ color: 'var(--text)' }}>Editor</b> can
+        do everything else but not that. <b style={{ color: 'var(--text)' }}>Projects</b> defaults to All — narrow it to
+        keep someone out of a project's data and off its switcher entirely.
       </div>
 
       {!canEdit && (
@@ -177,6 +209,14 @@ export default function AuthorizedUsersManager({ canEdit }: Props) {
               <Plus style={{ width: 14, height: 14 }} /> Add
             </button>
           </div>
+          <div style={{ marginBottom: 8 }}>
+            <FilterButtonGroup
+              label="Projects"
+              options={PROJECT_OPTIONS}
+              selected={projectsDraft}
+              onToggle={(v) => setProjectsDraft((s) => toggleFilterValue(s, v))}
+            />
+          </div>
           {formError && <div className="q-hint err">{formError}</div>}
 
           <button
@@ -196,7 +236,8 @@ export default function AuthorizedUsersManager({ canEdit }: Props) {
                 <code>email, name, role</code> (role must read &quot;admin&quot; or &quot;editor&quot;, else the
                 default below applies) — paste straight from a spreadsheet column, comma or tab
                 separated both work. An email already on the list is left untouched, not
-                overwritten.
+                overwritten. Bulk-added people start with access to all projects — narrow that
+                per-person below afterward if needed.
               </div>
               <textarea
                 value={bulkText}
@@ -252,42 +293,57 @@ export default function AuthorizedUsersManager({ canEdit }: Props) {
             <div className="wf-order-empty">No authorized users yet — nobody can sign in until at least one is added.</div>
           ) : (
             users.map((u) => (
-              <div className="wf-order-item" key={u.id}>
-                <span className="wf-order-label">
-                  {u.email}
-                  {u.name ? <span className="q-hint" style={{ margin: '0 0 0 8px' }}>{u.name}</span> : null}
-                </span>
-                {canEdit ? (
-                  <select
-                    value={u.role}
-                    disabled={roleSavingId === u.id}
-                    onChange={(e) => void changeRole(u, e.target.value as UserRole)}
-                    style={{ marginRight: 8 }}
-                  >
-                    <option value="editor">Editor</option>
-                    <option value="admin">Admin</option>
-                  </select>
-                ) : (
-                  <span className="tag norm" style={{ marginRight: 8 }}>
-                    {u.role === 'admin' ? 'Admin' : 'Editor'}
+              <div className="wf-order-item" key={u.id} style={{ flexDirection: 'column', alignItems: 'stretch', gap: 8 }}>
+                <div style={{ display: 'flex', alignItems: 'center', width: '100%' }}>
+                  <span className="wf-order-label">
+                    {u.email}
+                    {u.name ? <span className="q-hint" style={{ margin: '0 0 0 8px' }}>{u.name}</span> : null}
                   </span>
-                )}
-                {canEdit &&
-                  (deleteId === u.id ? (
-                    <div className="wf-confirm">
-                      Remove?
-                      <button className="wf-btn danger" disabled={saving} onClick={() => confirmDelete(u.id)}>
-                        {saving ? '…' : 'Yes'}
-                      </button>
-                      <button className="wf-btn" disabled={saving} onClick={() => setDeleteId(null)}>
-                        Cancel
-                      </button>
-                    </div>
+                  {canEdit ? (
+                    <select
+                      value={u.role}
+                      disabled={roleSavingId === u.id}
+                      onChange={(e) => void changeRole(u, e.target.value as UserRole)}
+                      style={{ marginRight: 8 }}
+                    >
+                      <option value="editor">Editor</option>
+                      <option value="admin">Admin</option>
+                    </select>
                   ) : (
-                    <button className="wf-remove" title="Remove" onClick={() => setDeleteId(u.id)}>
-                      <Trash2 style={{ width: 14, height: 14 }} />
-                    </button>
-                  ))}
+                    <span className="tag norm" style={{ marginRight: 8 }}>
+                      {u.role === 'admin' ? 'Admin' : 'Editor'}
+                    </span>
+                  )}
+                  {canEdit &&
+                    (deleteId === u.id ? (
+                      <div className="wf-confirm">
+                        Remove?
+                        <button className="wf-btn danger" disabled={saving} onClick={() => confirmDelete(u.id)}>
+                          {saving ? '…' : 'Yes'}
+                        </button>
+                        <button className="wf-btn" disabled={saving} onClick={() => setDeleteId(null)}>
+                          Cancel
+                        </button>
+                      </div>
+                    ) : (
+                      <button className="wf-remove" title="Remove" onClick={() => setDeleteId(u.id)}>
+                        <Trash2 style={{ width: 14, height: 14 }} />
+                      </button>
+                    ))}
+                </div>
+                {canEdit ? (
+                  <FilterButtonGroup
+                    label="Projects"
+                    options={PROJECT_OPTIONS}
+                    selected={toProjectSet(u.allowedProjects)}
+                    onToggle={(v) => void changeProjects(u, fromProjectSet(toggleFilterValue(toProjectSet(u.allowedProjects), v)))}
+                  />
+                ) : (
+                  <div className="q-hint" style={{ margin: 0 }}>
+                    Projects: {u.allowedProjects === null ? 'All' : u.allowedProjects.join(', ')}
+                  </div>
+                )}
+                {projectsSavingId === u.id && <span className="q-hint">Saving…</span>}
               </div>
             ))
           )}

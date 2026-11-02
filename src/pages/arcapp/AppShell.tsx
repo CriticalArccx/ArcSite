@@ -435,7 +435,7 @@ export default function AppShell() {
     <div className="arcapp">
       <div className="starfield" />
 
-      <Topbar userName={userName} userInitials={initials} onAuthClick={handleAuthClick} />
+      <Topbar userName={userName} userInitials={initials} allowedProjects={user.allowedProjects} onAuthClick={handleAuthClick} />
       <ContextStrip />
 
       <div className="arcapp-layout">

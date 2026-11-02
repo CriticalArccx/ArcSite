@@ -920,6 +920,32 @@ only. `saveAuthorizedUser`/`getAuthorizedUsers` in `src/lib/api.ts` carry the `r
 `useCurrentUser.ts` reads it into `CurrentUser.role` at sign-in, and `AppShell.tsx` derives
 `isAdmin`/`canEdit` from that alone.
 
+**Which project(s) someone can reach — `allowed_projects`, added 2026-11-02.** Before this, being
+on the roster at all meant full access to every project the Topbar switcher listed (STY4, SAN-NT1B,
+RSE1A) — role only ever gated Settings, never which site's data you could see or touch. Now each
+person in **Settings → Authorized Users** has a **Projects** picker (same All/toggle buttons as
+every other multi-select filter in the app): **All** (the default — identical to today's behavior,
+nothing to migrate) or a specific set. This is enforced in both places that matter:
+- **Client-side** — `useCurrentUser.ts` reads `allowed_projects` at sign-in. If the project this
+  browser last had selected isn't one of them, it redirects straight into one that is (via
+  `setCurrentProject`) rather than showing someone else's data; if they're authorized for ArcApp but
+  assigned to zero projects, sign-in is refused with a clear message instead of a silent lockout.
+  `Topbar.tsx`'s project switcher only ever lists what `CurrentUser.allowedProjects` allows (and
+  collapses to a plain label, no dropdown, if that's only one project).
+- **Server-side** — every project-scoped table's authenticated-write RLS policy
+  (`arcapp_settings`/`arcapp_tasks`/`arcapp_teams`/`arcapp_submittals`/`arcapp_workflows`/
+  `arcapp_item_assignments`/`arcapp_milestones`) now also calls the new
+  `arcapp_user_allowed_project(project_key)` SQL function, so a signed-in session can't bypass the
+  switcher and write into an unassigned project just by calling Supabase directly — see the
+  "NOT YET APPLIED — per-project write authorization" block at the end of `supabase/policies.sql`
+  (run it, plus the `allowed_projects` column added to `schema.sql`, against your project). `anon`
+  access (several of those tables are intentionally public/no-sign-in by earlier request — kiosk-
+  style Workflows/Teams/Tasks/Item Assignments) is untouched — there's no email to check a roster
+  against for an anonymous session, so that trade-off stands as it already was.
+- Reads were deliberately left alone: most of these tables are already `anon`-readable site-wide (by
+  prior, explicit requests — see each table's own section below), so restricting only
+  `authenticated` reads would add complexity without closing anything real.
+
 **Bulk Add** (added 2026-10-25, `AuthorizedUsersManager.tsx`/`bulkAddAuthorizedUsers` in
 `src/lib/api.ts`) — a collapsible textarea next to the one-at-a-time form for pasting many people
 at once, one per line: `email`, `email, name`, or `email, name, role` (comma- or tab-separated, so

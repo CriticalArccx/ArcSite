@@ -19,7 +19,8 @@
 
 import { useApiFn } from './useApiFn'
 import { supabase } from './supabaseClient'
-import { CURRENT_PROJECT, hasCapability } from './project'
+import { CURRENT_PROJECT, hasCapability, isProjectKey } from './project'
+import type { ProjectKey } from './project'
 import { FALLBACK_WORKFLOW_ITEMS, type WorkflowItem } from '../pages/arcapp/workflowItems'
 import type { Team, TeamMember, Todo, TaskTag, TaskStatus, Milestone } from '../pages/arcapp/types'
 
@@ -2353,23 +2354,54 @@ export function useDeleteTask() {
 // ---------------------------------------------------------------------------
 
 export type UserRole = 'admin' | 'editor'
-export type AuthorizedUser = { id: string; email: string; name: string; role: UserRole }
+/** `allowedProjects`: null means unrestricted (every project in PROJECTS) — the historical
+ * default, and still what a freshly bulk-added person gets. A non-null array restricts that
+ * person's access (both the Topbar project switcher and, server-side, every project_key-scoped
+ * table's RLS write policy — see arcapp_user_allowed_project() in supabase/policies.sql) to just
+ * those projects. Added 2026-11-02: before this, any authorized ArcApp user (admin or editor)
+ * could switch into and write any project's data, regardless of which site they actually worked
+ * on — see useCurrentUser.ts and Topbar.tsx for the client-side half of this gate. */
+export type AuthorizedUser = { id: string; email: string; name: string; role: UserRole; allowedProjects: ProjectKey[] | null }
+
+function parseAllowedProjects(v: unknown): ProjectKey[] | null {
+  if (!Array.isArray(v)) return null
+  const keys = v.filter(isProjectKey)
+  return keys.length ? keys : null
+}
 
 async function getAuthorizedUsers(): Promise<AuthorizedUser[]> {
-  const res = await supabase.from('arcapp_authorized_users').select('id, email, name, role').order('email', { ascending: true })
-  const rows = unwrap(res) as Array<{ id: string; email: string; name: string | null; role: string | null }>
-  return rows.map((r) => ({ id: r.id, email: r.email, name: r.name ?? '', role: r.role === 'admin' ? 'admin' : 'editor' }))
+  const res = await supabase.from('arcapp_authorized_users').select('id, email, name, role, allowed_projects').order('email', { ascending: true })
+  const rows = unwrap(res) as Array<{ id: string; email: string; name: string | null; role: string | null; allowed_projects: string[] | null }>
+  return rows.map((r) => ({
+    id: r.id,
+    email: r.email,
+    name: r.name ?? '',
+    role: r.role === 'admin' ? 'admin' : 'editor',
+    allowedProjects: parseAllowedProjects(r.allowed_projects),
+  }))
 }
 export function useGetAuthorizedUsers() {
   return useApiFn(getAuthorizedUsers)
 }
 
-async function saveAuthorizedUser(params: { id?: string; email: string; name: string; role: UserRole }): Promise<{ id: string }> {
+async function saveAuthorizedUser(params: {
+  id?: string
+  email: string
+  name: string
+  role: UserRole
+  allowedProjects?: ProjectKey[] | null
+}): Promise<{ id: string }> {
   const email = params.email.trim().toLowerCase()
   if (!email) throw new Error('An email is required.')
   const who = (await getCurrentUserEmail()) || 'admin'
 
-  const record = { email, name: params.name.trim(), role: params.role, added_by: who }
+  const record = {
+    email,
+    name: params.name.trim(),
+    role: params.role,
+    allowed_projects: params.allowedProjects ?? null,
+    added_by: who,
+  }
   const res = params.id
     ? await supabase.from('arcapp_authorized_users').update(record).eq('id', params.id).select('id').single()
     : await supabase.from('arcapp_authorized_users').insert(record).select('id').single()

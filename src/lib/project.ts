@@ -21,7 +21,7 @@ export const PROJECTS: Array<{ key: ProjectKey; label: string }> = [
 const STORAGE_KEY = 'arcapp_project'
 const DEFAULT_PROJECT: ProjectKey = 'STY4'
 
-function isProjectKey(v: unknown): v is ProjectKey {
+export function isProjectKey(v: unknown): v is ProjectKey {
   return v === 'STY4' || v === 'SANNT1B' || v === 'RSE1A'
 }
 
