@@ -31,11 +31,11 @@ exists in your database untouched, in case something else reads it.
    without signing in. `arcapp_settings` stays editor-only. See `supabase/policies.sql` for the
    editor-restricted versions this replaced, kept commented out for an easy revert.
 
-## Project switcher — STY4 / SAN-NT1B
+## Project switcher — STY4 / SAN-NT1B / RSE1A
 
 ArcApp now supports more than one LaunchPad project. Click the site pill in the top-right (next to
-Sign In) to pick between **STY4** (Phoenix DC3) and **SAN-NT1B** — the choice is saved to
-`localStorage` and the page reloads, so every fetch in the app comes back scoped to the newly
+Sign In) to pick between **STY4** (Phoenix DC3), **SAN-NT1B**, and **RSE1A** — the choice is saved
+to `localStorage` and the page reloads, so every fetch in the app comes back scoped to the newly
 picked project.
 
 - **`src/lib/project.ts`** is the single source of truth — `CURRENT_PROJECT` is read once at
@@ -88,6 +88,20 @@ picked project.
   hidden), and switching back to STY4 restores the full nav and its own data — with zero console
   errors after fixing one component (`CxAlloyStatusPicker`, used by 4 pickers on the Settings
   page) that was still fetching unconditionally regardless of the `cxAlloyActions` gate.
+- **RSE1A added 2026-11-02** — same `PROJECTS`/`CAPABILITIES` pattern in `project.ts`, no other code
+  changes needed (every table-name template, link-base lookup, and ArcApp-owned table already reads
+  `CURRENT_PROJECT`/`CXALLOY_TABLE_PREFIX` generically, same as SAN-NT1B's addition above). Its base
+  LaunchPad project (own `launchpad_projects` row, Apps Script deployment, dropdownoptions/
+  BackEndData sheet) was confirmed set up, but **both capabilities start off** (`siteLogging: false,
+  cxAlloyActions: false`) — neither was confirmed specifically: `siteLogging` needs
+  `RSE1AAssets`/`RSE1ARTFT` tables that don't exist for a brand-new project until built, and
+  `cxAlloyActions` needs the same custom actions SAN-NT1B's script got
+  (`AppendToCxAlloyScript.gs`) also added to RSE1A's own deployment. Flip them on in
+  `CAPABILITIES` once each is actually verified — not before, same reasoning as the `cxAlloyActions`
+  gap above (an unrecognized action silently returns malformed data instead of erroring). ArcApp's
+  own tables need no RSE1A-specific migration either — they're already `project_key`-scoped per the
+  bullet above, so switching to RSE1A for the first time just starts with empty Teams/Tasks/
+  Submittals/Settings/Milestones, same as SAN-NT1B did.
 
 **⚠️ Unrelated pre-existing security finding, surfaced while checking table constraints for this
 migration (not applied — needs your review):** 8 tables in this Supabase project have Row Level

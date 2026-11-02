@@ -10,18 +10,19 @@
  * click.
  */
 
-export type ProjectKey = 'STY4' | 'SANNT1B'
+export type ProjectKey = 'STY4' | 'SANNT1B' | 'RSE1A'
 
 export const PROJECTS: Array<{ key: ProjectKey; label: string }> = [
   { key: 'STY4', label: 'STY4' },
   { key: 'SANNT1B', label: 'SAN-NT1B' },
+  { key: 'RSE1A', label: 'RSE1A' },
 ]
 
 const STORAGE_KEY = 'arcapp_project'
 const DEFAULT_PROJECT: ProjectKey = 'STY4'
 
 function isProjectKey(v: unknown): v is ProjectKey {
-  return v === 'STY4' || v === 'SANNT1B'
+  return v === 'STY4' || v === 'SANNT1B' || v === 'RSE1A'
 }
 
 function readInitial(): ProjectKey {
@@ -70,6 +71,15 @@ const CAPABILITIES: Record<ProjectKey, Record<Capability, boolean>> = {
   // cxAlloyActions flipped on 2026-09-25 — SAN-NT1B's Apps Script now has getChecklists/
   // getIssues/getCxAlloySettings added (see AppendToCxAlloyScript.gs), confirmed deployed.
   SANNT1B: { siteLogging: false, cxAlloyActions: true },
+  // Added 2026-11-02 — RSE1A's base LaunchPad project (its own launchpad_projects row, Apps
+  // Script deployment, dropdownoptions/BackEndData sheet) exists, but neither ArcApp-specific
+  // capability has been confirmed yet: siteLogging needs RSE1AAssets/RSE1ARTFT tables that don't
+  // exist for a new project until built, and cxAlloyActions needs the same custom actions added
+  // to SAN-NT1B's script (AppendToCxAlloyScript.gs) also added to RSE1A's own deployment. Starts
+  // both off, same safe starting point SAN-NT1B had before each was individually confirmed and
+  // flipped on — flip to true here once verified, not before (see this file's capability-gap
+  // comment above for what breaks if a page assumes an action is deployed when it isn't).
+  RSE1A: { siteLogging: false, cxAlloyActions: false },
 }
 
 export function hasCapability(cap: Capability, project: ProjectKey = CURRENT_PROJECT): boolean {
