@@ -2384,6 +2384,26 @@ export function useGetAuthorizedUsers() {
   return useApiFn(getAuthorizedUsers)
 }
 
+/** Just enough to pick someone from a dropdown — no role, no allowedProjects. Added 2026-11-03:
+ * who's authorized for which project is now admin-only information (see
+ * `authorized_users_select_admins` in policies.sql, which replaced the old "any signed-in user can
+ * read the whole roster" policy), but every "assign to a specific person" UI still needs a
+ * name/email roster regardless of role — `arcapp_authorized_users_directory()` is a SECURITY
+ * DEFINER function (same trusted pattern as is_arcapp_admin/is_arcapp_authorized above it in
+ * policies.sql) that hands back only that, and only to someone who's themselves on the roster. */
+export type PersonOption = { id: string; email: string; name: string }
+
+async function getAuthorizedUsersDirectory(): Promise<PersonOption[]> {
+  const res = await supabase.rpc('arcapp_authorized_users_directory')
+  const rows = unwrap(res) as Array<{ id: string; email: string; name: string | null }>
+  return rows
+    .map((r) => ({ id: r.id, email: r.email, name: r.name ?? '' }))
+    .sort((a, b) => a.email.localeCompare(b.email))
+}
+export function useGetAuthorizedUsersDirectory() {
+  return useApiFn(getAuthorizedUsersDirectory)
+}
+
 async function saveAuthorizedUser(params: {
   id?: string
   email: string

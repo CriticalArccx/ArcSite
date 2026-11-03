@@ -958,16 +958,27 @@ happened to say for them, since a bulk list someone pastes in may not even be th
 for people already added; the result message reports how many were added vs. skipped (already on
 the list, listed by email) vs. ignored (no `@`) so nothing is silently dropped.
 
-**Reading the full roster isn't admin-only** (widened 2026-09-25 — used to be "your own row only"
-for a non-admin): every "assign to a specific person" control in the app — Teams' member picker,
-a task's/Checklist-Issue-NETA-item's assign-to popover, Settings' default-assignee picker — is a
-dropdown of `arcapp_authorized_users` (`PersonSelect.tsx`/`useAuthorizedUsersOptions`), never
-free-text name/email entry, so someone can only ever be assigned something if they can actually
-sign in and see it. That needs any signed-in user (not just admins) to be able to read the full
-list, which is safe now that the whole site requires signing in — everyone who can query this
-table is already a vetted project member, and the exposed columns are just email/name/role (see
-`authorized_users_select_all_signed_in` in `policies.sql`). *Writing* to the roster (add/remove/
-change role) is still admin-only, unchanged.
+**Reading the full roster is admin-only** (`authorized_users_select_admins` in `policies.sql`) —
+narrowed back 2026-11-03. It was widened 2026-09-25 to "any signed-in user" so every "assign to a
+specific person" control in the app — Teams' member picker, a task's/Checklist-Issue-NETA-item's
+assign-to popover, Settings' default-assignee picker — could offer a dropdown instead of free-text
+name/email entry. That stopped being a safe thing to widen once `role` and `allowed_projects`
+(above) existed: those are exactly the columns an editor shouldn't be able to read about every
+other person on the roster, even though the Settings screen that shows them was already admin-only
+in the UI (`AuthorizedUsersManager`'s `canEdit` prop is actually `isAdmin` — see `SettingsPanel.tsx`)
+— the gap was that nothing stopped a signed-in editor from reading the raw table directly (e.g. from
+the browser console).
+
+The assignment controls above still need *some* roster to pick a person from, regardless of role,
+so they go through `arcapp_authorized_users_directory()` instead — a `SECURITY DEFINER` SQL function
+(same trusted shape as `is_arcapp_admin()`/`is_arcapp_authorized()`) that hands back only
+`id`/`email`/`name`, and only to a caller who's themselves on the roster at all. `PersonSelect.tsx`'s
+`useAuthorizedUsersOptions` and `DefaultAssigneePicker.tsx` both call it via
+`useGetAuthorizedUsersDirectory()`/`PersonOption` in `src/lib/api.ts`; `AuthorizedUsersManager.tsx`
+(the admin-only management screen itself) is the one remaining caller of the full
+`getAuthorizedUsers()`/`AuthorizedUser` (role + allowedProjects included), which now only ever
+succeeds for an admin anyway, matching the RLS. *Writing* to the roster (add/remove/change role/
+change project access) is still admin-only, unchanged.
 - A previously-saved assignment whose email is no longer on the roster still shows, selected and
   savable as-is, flagged "— not in Authorized Users" rather than silently disappearing (same
   stale-value pattern `CxAlloyStatusPicker` already used for status lists).

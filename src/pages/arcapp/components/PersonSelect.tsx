@@ -1,22 +1,24 @@
 import { useEffect } from 'react'
-import { useGetAuthorizedUsers } from '../../../lib/api'
-import type { AuthorizedUser } from '../../../lib/api'
+import { useGetAuthorizedUsersDirectory } from '../../../lib/api'
+import type { PersonOption } from '../../../lib/api'
 
 /**
- * Fetches arcapp_authorized_users once per mount — shared by every "assign to a specific person"
- * UI (AssignPopover, TeamsManager, TodoPage's task form, Settings' DefaultAssigneePicker) so a
- * person can only ever be picked from the roster, never typed freehand. Requires the
- * authorized_users_select_all_signed_in RLS policy (any signed-in user, not just admins, can read
- * the roster) — see policies.sql; without it, a non-admin would see an empty list here.
+ * Fetches the authorized-users directory (name/email only, not role/allowedProjects — see
+ * PersonOption in api.ts) once per mount — shared by every "assign to a specific person" UI
+ * (AssignPopover, TeamsManager, TodoPage's task form, Settings' DefaultAssigneePicker) so a person
+ * can only ever be picked from the roster, never typed freehand. Goes through
+ * arcapp_authorized_users_directory() (a SECURITY DEFINER function, not a direct table read) so
+ * this works for any signed-in authorized user even though the full roster — who's an admin, and
+ * which project(s) they can reach — is admin-only to read as of 2026-11-03.
  */
 export function useAuthorizedUsersOptions() {
-  const usersFn = useGetAuthorizedUsers()
+  const usersFn = useGetAuthorizedUsersDirectory()
   useEffect(() => {
     void usersFn.trigger()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
   return {
-    users: (usersFn.data as AuthorizedUser[] | undefined) ?? [],
+    users: (usersFn.data as PersonOption[] | undefined) ?? [],
     loading: usersFn.loading || !usersFn.data,
     error: usersFn.error,
     retry: () => void usersFn.trigger(),
@@ -24,7 +26,7 @@ export function useAuthorizedUsersOptions() {
 }
 
 type Props = {
-  users: AuthorizedUser[]
+  users: PersonOption[]
   loadingUsers: boolean
   /** Selected email, or '' for nothing selected. */
   value: string

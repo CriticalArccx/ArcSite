@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Save } from 'lucide-react'
-import { useGetAuthorizedUsers } from '../../../lib/api'
-import type { AuthorizedUser, DefaultAssignee } from '../../../lib/api'
+import { useGetAuthorizedUsersDirectory } from '../../../lib/api'
+import type { PersonOption, DefaultAssignee } from '../../../lib/api'
 import type { Team } from '../types'
 import PersonSelect from './PersonSelect'
 
@@ -34,15 +34,15 @@ type Props = {
  * case for typing someone who isn't on it.
  */
 export default function DefaultAssigneePicker({ label, hint, value, teams, canEdit, loading, onSave }: Props) {
-  const usersFn = useGetAuthorizedUsers()
+  const usersFn = useGetAuthorizedUsersDirectory()
   const [mode, setMode] = useState<Mode>(() => modeOf(value))
   const [teamId, setTeamId] = useState(value.teamId ?? '')
   const [personEmail, setPersonEmail] = useState(value.email ?? '')
   const [msg, setMsg] = useState<{ text: string; cls: string }>({ text: '', cls: 'q-hint' })
   const [busy, setBusy] = useState(false)
 
-  // Same RLS shape as AuthorizedUsersManager — a non-admin can only read their own row, so don't
-  // even ask until canEdit (isAdmin) is true; this control is disabled for them anyway.
+  // This control is disabled for non-admins anyway (canEdit === isAdmin in SettingsPanel), so
+  // don't even fetch until then.
   useEffect(() => {
     if (canEdit) void usersFn.trigger()
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -54,7 +54,7 @@ export default function DefaultAssigneePicker({ label, hint, value, teams, canEd
     setPersonEmail(value.email ?? '')
   }, [value])
 
-  const users = (usersFn.data as AuthorizedUser[] | undefined) ?? []
+  const users = (usersFn.data as PersonOption[] | undefined) ?? []
 
   const dirty =
     mode !== modeOf(value) ||
