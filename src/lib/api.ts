@@ -1579,6 +1579,99 @@ export function useDeleteSubmittalRecord() {
 }
 
 // ---------------------------------------------------------------------------
+// lessons learned — a simple, project-scoped log (arcapp_lessons_learned): a title, a free-text
+// description, a category, and the date the lesson applies to. Deliberately NOT asset/system-
+// linked or attachment-bearing like Submittals/Joint Pack Photos — this is meant to be a quick
+// "write it down before it's forgotten" log, not a formal RCA record. `loggedBy` is set once at
+// creation and never overwritten by later edits (same as Submittals' `updatedBy` is allowed to
+// change on edit, but who originally logged it shouldn't); `updatedBy`/`updatedAt` track edits.
+// ---------------------------------------------------------------------------
+
+export const LESSON_CATEGORIES = ['Mechanical', 'Electrical', 'Controls', 'Process', 'Documentation', 'Other'] as const
+const ALLOWED_LESSON_CATEGORIES = new Set<string>(LESSON_CATEGORIES)
+
+export type LessonLearned = {
+  id: string
+  title: string
+  description: string
+  category: string
+  loggedBy: string
+  loggedAt: string
+  updatedBy: string
+  updatedAt: string
+  createdAt: string
+}
+
+async function getLessonsLearned(): Promise<LessonLearned[]> {
+  const res = await supabase
+    .from('arcapp_lessons_learned')
+    .select('id, title, description, category, logged_by, logged_at, updated_by, updated_at, created_at')
+    .eq('project_key', CURRENT_PROJECT)
+    .order('logged_at', { ascending: false })
+  const rows = unwrap(res) as Array<{
+    id: string
+    title: string | null
+    description: string | null
+    category: string | null
+    logged_by: string | null
+    logged_at: string | null
+    updated_by: string | null
+    updated_at: string | null
+    created_at: string | null
+  }>
+  return rows.map((r) => ({
+    id: r.id,
+    title: r.title || '',
+    description: r.description || '',
+    category: r.category || 'Other',
+    loggedBy: r.logged_by || '',
+    loggedAt: r.logged_at || '',
+    updatedBy: r.updated_by || '',
+    updatedAt: r.updated_at || '',
+    createdAt: r.created_at || '',
+  }))
+}
+export function useGetLessonsLearned() {
+  return useApiFn(getLessonsLearned)
+}
+
+export type LessonLearnedInput = { id?: string; title: string; description: string; category: string; loggedAt: string }
+async function saveLessonLearned(params: LessonLearnedInput): Promise<{ id: string }> {
+  const title = params.title.trim()
+  if (!title) throw new Error('A title is required.')
+  const category = ALLOWED_LESSON_CATEGORIES.has(params.category) ? params.category : 'Other'
+  const who = (await getCurrentUserEmail()) || 'admin'
+  const record: Record<string, unknown> = {
+    project_key: CURRENT_PROJECT,
+    title,
+    description: params.description.trim(),
+    category,
+    logged_at: params.loggedAt,
+    updated_by: who,
+    updated_at: new Date().toISOString(),
+  }
+  // Only stamp logged_by on first creation — omitted on an edit's upsert so the original author
+  // isn't silently replaced by whoever last edited it (see updated_by for that instead).
+  if (!params.id) record.logged_by = who
+  if (params.id) record.id = params.id
+  const res = await supabase.from('arcapp_lessons_learned').upsert(record, { onConflict: 'id' }).select('id').single()
+  const row = unwrap(res) as { id: string }
+  return { id: row.id }
+}
+export function useSaveLessonLearned() {
+  return useApiFn(saveLessonLearned)
+}
+
+async function deleteLessonLearned(params: { id: string }): Promise<{ id: string }> {
+  const res = await supabase.from('arcapp_lessons_learned').delete().eq('id', params.id)
+  if (res.error) throw new Error(res.error.message)
+  return { id: params.id }
+}
+export function useDeleteLessonLearned() {
+  return useApiFn(deleteLessonLearned)
+}
+
+// ---------------------------------------------------------------------------
 // milestones — a milestone's completion is driven by criteria checked against this app's other
 // modules (Checklists/Issues/Submittals/NETA Tracker) instead of a hand-set percentage; see
 // computeMilestoneProgress in src/pages/arcapp/milestones.ts for how `criteria` turns into a pct.

@@ -13,6 +13,7 @@ import {
   Tag,
   Grid3x3,
   FileSpreadsheet,
+  Lightbulb,
   Settings as SettingsIcon,
 } from 'lucide-react'
 import { hasCapability, type Capability } from '../../../lib/project'
@@ -25,6 +26,7 @@ const NAV: Array<{ to: string; label: string; icon: typeof LayoutDashboard; requ
   { to: '/checklists', label: 'Checklists', icon: ListChecks, requires: 'cxAlloyActions' },
   { to: '/issues', label: 'Issues', icon: AlertTriangle, requires: 'cxAlloyActions' },
   { to: '/submittals', label: 'Submittals', icon: FileCheck2 },
+  { to: '/lessonslearned', label: 'Lessons Learned', icon: Lightbulb },
   { to: '/tamperseals', label: 'Tamper Seals', icon: ShieldAlert, requires: 'siteLogging' },
   { to: '/rtft', label: 'RTFT', icon: ClipboardCheck, requires: 'siteLogging' },
   { to: '/equipmenttracker', label: 'Equipment Tracker', icon: Grid3x3 },

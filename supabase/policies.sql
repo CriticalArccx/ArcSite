@@ -379,3 +379,22 @@ AS $$
 $$;
 
 GRANT EXECUTE ON FUNCTION arcapp_authorized_users_directory() TO authenticated;
+
+
+-- =============================================================================
+-- APPLIED — arcapp_lessons_learned (requested 2026-11-03). Same "viewable without signing in,
+-- writes need any authorized ArcApp user" pattern as arcapp_submittals/arcapp_milestones — a new
+-- table, so unlike those two it's built with the project-scoped write check
+-- (arcapp_user_allowed_project(), see the per-project write authorization block above) from the
+-- start rather than needing a later migration to add it.
+-- =============================================================================
+
+ALTER TABLE arcapp_lessons_learned ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "lessons_learned_select_public" ON arcapp_lessons_learned
+  FOR SELECT TO anon, authenticated USING (true);
+
+CREATE POLICY "lessons_learned_write_authorized" ON arcapp_lessons_learned
+  FOR ALL TO authenticated
+  USING (is_arcapp_authorized() AND arcapp_user_allowed_project(project_key))
+  WITH CHECK (is_arcapp_authorized() AND arcapp_user_allowed_project(project_key));

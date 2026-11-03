@@ -305,3 +305,34 @@ UPDATE arcapp_tasks SET status = 'done' WHERE done = true AND status <> 'done';
 -- ---------------------------------------------------------------------------
 
 ALTER TABLE arcapp_authorized_users ADD COLUMN IF NOT EXISTS allowed_projects text[];
+
+-- ---------------------------------------------------------------------------
+-- APPLIED — arcapp_lessons_learned (requested 2026-11-03).
+--
+-- A quick, project-scoped log of things worth remembering for next time: title, free-text
+-- description, a category, and the date it applies to. Deliberately NOT asset/system-linked and
+-- NOT attachment-bearing like Submittals/Joint Pack Photos — this is meant to be a lightweight
+-- "write it down before it's forgotten" log, not a formal root-cause record; see
+-- src/pages/arcapp/components/LessonsLearnedManager.tsx.
+--
+-- `category` isn't a CHECK-constrained enum — see LESSON_CATEGORIES in src/lib/api.ts, validated
+-- app-side only, same reasoning as not CHECK-constraining allowed_projects above (so adding a
+-- category later doesn't need a migration).
+--
+-- `logged_by` is stamped once at creation and never touched again (see saveLessonLearned in
+-- api.ts) — `updated_by`/`updated_at` track edits instead, same split as Submittals'
+-- notes_log author vs. updated_by.
+-- ---------------------------------------------------------------------------
+
+CREATE TABLE IF NOT EXISTS arcapp_lessons_learned (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  project_key text NOT NULL,
+  title text NOT NULL,
+  description text NOT NULL DEFAULT '',
+  category text NOT NULL DEFAULT 'Other',
+  logged_by text,
+  logged_at date NOT NULL DEFAULT CURRENT_DATE,
+  updated_by text,
+  updated_at timestamptz NOT NULL DEFAULT now(),
+  created_at timestamptz NOT NULL DEFAULT now()
+);

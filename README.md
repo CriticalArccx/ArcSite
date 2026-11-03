@@ -552,6 +552,26 @@ same `getSettings()`. The fix is a one-line policy swap (`settings_select_authen
 but changing a live RLS policy needs your explicit go-ahead rather than being applied
 automatically — ask for it to be applied when you're ready.
 
+## Lessons Learned — a quick log, not a formal record
+
+**Added 2026-11-03** (`arcapp_lessons_learned`, `LessonsLearnedManager.tsx`/`LessonsLearnedPage.tsx`,
+nav item right after Submittals). A simple, project-scoped log for things worth remembering: a
+title, a free-text description, a category (Mechanical/Electrical/Controls/Process/Documentation/
+Other — `LESSON_CATEGORIES` in `src/lib/api.ts`, not admin-configurable or DB-enforced, just a fixed
+small list), and the date it applies to.
+
+Deliberately **not** asset/system-linked and **not** attachment-bearing like Submittals/Joint Pack
+Photos — the point is a lightweight "write it down before it's forgotten" log, not a formal
+root-cause record. Same shape as Submittals otherwise: public read (viewable signed out, same as
+most modules), any signed-in authorized user (not just admins) can add/edit/delete any entry, and —
+since this is a brand-new table — the project-scoped write check
+(`arcapp_user_allowed_project(project_key)`, added 2026-11-02 for the other writable tables) is
+baked in from the start rather than needing a later migration.
+
+`logged_by` is stamped once at creation from whoever added the entry and never overwritten by a
+later edit; `updated_by`/`updated_at` track edits instead, same split as Submittals' note-log author
+vs. its own `updated_by`.
+
 ## Dashboard KPI row — real data, not sample numbers
 
 `KpiRow.tsx` was still the original Retool-era mock — all four tiles (Milestones GO, Open to-dos,
