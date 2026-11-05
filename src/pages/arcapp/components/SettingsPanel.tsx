@@ -1,6 +1,9 @@
+import { useState } from 'react'
+import { Send } from 'lucide-react'
 import WorkflowsBuilder from './WorkflowsBuilder'
 import AuthorizedUsersManager from './AuthorizedUsersManager'
 import { Field, ToggleField } from './SettingsControls'
+import { useSendChatTestMessage } from '../../../lib/api'
 
 type Props = {
   jointPackEnabled: boolean
@@ -8,6 +11,7 @@ type Props = {
   assetAttributesEnabled: boolean
   cxAlloyLinkBaseDetected: { domain: string; projectId: string } | null
   cxalloyLinkBaseOverride: string
+  googleChatWebhookUrl: string
   /** Broader than isAdmin — any signed-in, authorized ArcApp user. Only used here for Workflows
    * (item catalog + building workflows), which isn't admin-restricted. */
   canEdit: boolean
@@ -43,6 +47,7 @@ export default function SettingsPanel({
   assetAttributesEnabled,
   cxAlloyLinkBaseDetected,
   cxalloyLinkBaseOverride,
+  googleChatWebhookUrl,
   canEdit,
   isAdmin,
   canManageWorkflows,
@@ -106,11 +111,58 @@ export default function SettingsPanel({
           loading={loading}
           onSave={(v) => onSaveSetting('neta_tracker_enabled', v ? 'true' : '')}
         />
+        <Field
+          label="Google Chat webhook URL"
+          hint={
+            'Posts a message here whenever a critical to-do or a new lesson learned is logged. In the target ' +
+            'Google Chat space: Apps & integrations → Webhooks → Add webhook, then paste the URL it gives you. ' +
+            "Leave blank to turn Chat notifications off for this project. The interactive bot (type \"/status\", " +
+            '"/todo", or "/lesson" to it) is a separate setup — see the Google Chat section of README.md.'
+          }
+          initial={googleChatWebhookUrl}
+          canEdit={isAdmin}
+          loading={loading}
+          onSave={(v) => onSaveSetting('google_chat_webhook_url', v)}
+        />
+        {isAdmin && googleChatWebhookUrl && <ChatTestButton />}
 
         <WorkflowsBuilder canEdit={canManageWorkflows} canEditItems={canEdit} />
 
         <AuthorizedUsersManager canEdit={isAdmin} />
       </div>
     </section>
+  )
+}
+
+/** Separate from the Field above so it can show its own send-in-flight / success / failure state
+ * without that state getting wiped by Field's own `initial` effect on every settings refetch. */
+function ChatTestButton() {
+  const sendTestFn = useSendChatTestMessage()
+  const [msg, setMsg] = useState<{ text: string; cls: string }>({ text: '', cls: 'q-hint' })
+
+  async function send() {
+    setMsg({ text: 'Sending…', cls: 'q-hint' })
+    try {
+      await sendTestFn.trigger().result
+      setMsg({ text: 'Sent — check the Google Chat space.', cls: 'q-hint ok' })
+    } catch (err) {
+      setMsg({ text: 'Failed: ' + (err instanceof Error ? err.message : String(err)), cls: 'q-hint err' })
+    }
+  }
+
+  return (
+    <div style={{ marginBottom: 22, maxWidth: 560 }}>
+      <button
+        className="seal-submit-btn"
+        type="button"
+        style={{ maxWidth: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}
+        disabled={sendTestFn.loading}
+        onClick={send}
+      >
+        <Send style={{ width: 15, height: 15 }} />
+        Send test message
+      </button>
+      {msg.text && <div className={msg.cls}>{msg.text}</div>}
+    </div>
   )
 }

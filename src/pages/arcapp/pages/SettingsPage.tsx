@@ -11,6 +11,7 @@ export default function SettingsPage() {
       assetAttributesEnabled={ctx.assetAttributesEnabled}
       cxAlloyLinkBaseDetected={ctx.cxAlloyLinkBaseDetected}
       cxalloyLinkBaseOverride={ctx.cxalloyLinkBaseOverride}
+      googleChatWebhookUrl={ctx.googleChatWebhookUrl}
       canEdit={ctx.canEdit}
       isAdmin={ctx.isAdmin}
       canManageWorkflows={ctx.canManageWorkflows}

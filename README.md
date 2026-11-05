@@ -572,6 +572,76 @@ baked in from the start rather than needing a later migration.
 later edit; `updated_by`/`updated_at` track edits instead, same split as Submittals' note-log author
 vs. its own `updated_by`.
 
+## Google Chat bot — notifications + slash commands
+
+**Added 2026-11-05.** Two small Supabase Edge Functions connect ArcApp to a Google Chat space,
+scoped to one project for now:
+
+- **`chat-notify`** (outbound) — ArcApp posts a message into the space whenever a **critical
+  to-do** is added or a **new lesson learned** is logged (`notifyGoogleChat` in `src/lib/api.ts`,
+  called from `saveTask`/`saveLessonLearned` on create only, best-effort — a Chat failure never
+  blocks the underlying save). Settings also has a "Send test message" button that goes through
+  the same function.
+- **`chat-bot`** (inbound) — an interactive bot you can `@mention` or DM in the space. It
+  understands three commands, typed with or without the leading `/`:
+  - `/status` — open to-do count, overdue deliverable count, total lessons learned logged
+  - `/todo <text>` — adds a to-do (tagged "norm"), attributed to the Chat sender's display name
+  - `/lesson <text>` — logs a lesson learned (category "Other"), same attribution
+
+Both functions live in `supabase/functions/` and read/write the same tables the app does
+(`arcapp_tasks`, `arcapp_lessons_learned`, `arcapp_milestones`, `arcapp_settings`) via the service
+role key, which Supabase injects into every Edge Function automatically — no new secret needed for
+that part.
+
+### Setting up outbound notifications (the easy half)
+
+1. In the target Google Chat space: **Apps & integrations → Webhooks → Add webhook**, name it
+   "ArcApp", and copy the URL it gives you.
+2. In ArcApp: **Settings → Google Chat webhook URL** (admin-only field), paste it in, Save.
+3. Click **Send test message** right below it to confirm it posted.
+
+No Edge Function deployment is required for this half if you're doing it on a Supabase project
+that already has `chat-notify` deployed (see below) — if notifications are the only thing you want,
+you still need to deploy `chat-notify` once (it's what the webhook URL and the app's own writes
+actually go through), but you can skip the Google Cloud Console steps below entirely.
+
+### Setting up the interactive bot (the involved half)
+
+This part needs an actual Google Chat app, which means a Google Cloud project — there's no way
+around that for a two-way bot, and it's a one-time setup per Workspace:
+
+1. **Google Cloud Console** → create or pick a project → enable the **Google Chat API**.
+2. **Google Chat API → Configuration**: give it a name/avatar/description, under
+   **Interactivity** choose "App can be messaged via HTTP" / "App URL" and set the endpoint (see
+   step 4 below for the exact URL), turn on **Receive 1:1 messages** if you want DMs, and set
+   **Visibility** to whoever in your Workspace should be able to add it (or "anyone" for personal
+   testing).
+3. Deploy the two functions to your Supabase project (the Supabase CLI isn't linked in this repo's
+   dev environment, so this always has to be run from somewhere that's logged in):
+   ```
+   supabase login
+   supabase link --project-ref <your-project-ref>
+   supabase functions deploy chat-notify
+   supabase functions deploy chat-bot --no-verify-jwt
+   ```
+   `chat-bot` needs `--no-verify-jwt` because Google Chat doesn't send a Supabase-issued session
+   token — it's verified with its own shared secret instead (next step), not Supabase's gateway.
+4. Set that shared secret, and which project this bot instance is for, as function secrets:
+   ```
+   supabase secrets set CHAT_SHARED_SECRET=<a long random string you make up> ARCAPP_CHAT_DEFAULT_PROJECT=STY4
+   ```
+5. Back in Cloud Console, set the HTTP endpoint from step 2 to:
+   ```
+   https://<your-project-ref>.supabase.co/functions/v1/chat-bot?token=<the CHAT_SHARED_SECRET value>
+   ```
+   Treat that full URL as a secret — anyone who has it can post to this function as if they were
+   Google Chat. (`?project=<KEY>` can be added to the URL instead of relying on
+   `ARCAPP_CHAT_DEFAULT_PROJECT`, which is how a second project would get its own bot/space later:
+   a second Chat app in Cloud Console pointing at this same function with a different `project`
+   value — no code change needed.)
+6. Set the app's status to **Live** and add/publish it to the space you want it in, then
+   `@ArcApp /status` to confirm it responds.
+
 ## Dashboard KPI row — real data, not sample numbers
 
 `KpiRow.tsx` was still the original Retool-era mock — all four tiles (Milestones GO, Open to-dos,

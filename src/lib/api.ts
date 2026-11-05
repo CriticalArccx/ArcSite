@@ -1285,6 +1285,12 @@ export type AppSettings = {
    * admin sets this, same "wire up a new project's deployment yourself" pattern as Joint Pack
    * Photos'/NETA Tracker's own script URL settings). */
   equipmentTrackerScriptUrl: string
+  /** Incoming webhook URL for this project's Google Chat space (Settings → "Google Chat" field,
+   * added 2026-11-05) — set from that space's Apps & integrations → Webhooks panel in Google Chat.
+   * Used by notifyGoogleChat() to post a message there; blank means Chat notifications are off for
+   * this project (notifyGoogleChat no-ops rather than erroring). See README's Google Chat section
+   * for the full setup, including the separate interactive bot (chat-bot Edge Function). */
+  googleChatWebhookUrl: string
 }
 export type MilestoneStatusStyle = { label: string; color: string }
 export type MilestoneStatusStyles = Record<Milestone['status'], MilestoneStatusStyle>
@@ -1365,6 +1371,7 @@ async function getSettings(): Promise<AppSettings> {
     milestoneCautionThreshold: parseThreshold(map.get('milestone_caution_threshold'), SETTINGS_DEFAULTS.milestoneCautionThreshold),
     milestoneStatusStyles: parseMilestoneStatusStyles(map.get('milestone_status_styles')),
     equipmentTrackerScriptUrl: map.get('equipment_tracker_script_url') ?? '',
+    googleChatWebhookUrl: map.get('google_chat_webhook_url') ?? '',
   }
 }
 export function useGetSettings() {
@@ -1404,6 +1411,7 @@ const ALLOWED_SETTING_KEYS = new Set([
   'milestone_caution_threshold',
   'milestone_status_styles',
   'equipment_tracker_script_url',
+  'google_chat_webhook_url',
 ])
 async function saveSetting(params: { key: string; value: string }): Promise<{ key: string; value: string }> {
   if (!ALLOWED_SETTING_KEYS.has(params.key)) throw new Error(`Unknown setting key: ${params.key}`)
@@ -1435,6 +1443,38 @@ async function saveDefaultAssignee(params: { prefix: string } & DefaultAssignee)
 }
 export function useSaveDefaultAssignee() {
   return useApiFn(saveDefaultAssignee)
+}
+
+// ---------------------------------------------------------------------------
+// Google Chat — outbound notifications post through the `chat-notify` Edge Function (never
+// directly to the webhook URL from the browser, so the URL never has to be fetched client-side
+// and the call can be cheaply re-checked server-side against arcapp_user_allowed_project). This
+// is deliberately best-effort: a Chat outage or missing webhook config should never break the
+// save it's attached to, so every call site does `void notifyGoogleChat(...)` and this function
+// swallows its own errors rather than throwing. See README's Google Chat section for the matching
+// chat-bot Edge Function (inbound slash commands: /status, /todo, /lesson).
+// ---------------------------------------------------------------------------
+
+async function notifyGoogleChat(text: string): Promise<void> {
+  try {
+    const { error } = await supabase.functions.invoke('chat-notify', { body: { projectKey: CURRENT_PROJECT, text } })
+    if (error) throw error
+  } catch {
+    // Best-effort — see comment above. Settings' "Send test message" button uses
+    // sendChatTestMessage below instead, which does surface the error.
+  }
+}
+
+async function sendChatTestMessage(): Promise<{ ok: true }> {
+  const who = (await getCurrentUserEmail()) || 'an admin'
+  const { error } = await supabase.functions.invoke('chat-notify', {
+    body: { projectKey: CURRENT_PROJECT, text: `👋 Test message from ArcApp, sent by ${who}.` },
+  })
+  if (error) throw new Error(error.message || 'Google Chat rejected the test message.')
+  return { ok: true }
+}
+export function useSendChatTestMessage() {
+  return useApiFn(sendChatTestMessage)
 }
 
 // ---------------------------------------------------------------------------
@@ -1656,6 +1696,7 @@ async function saveLessonLearned(params: LessonLearnedInput): Promise<{ id: stri
   if (params.id) record.id = params.id
   const res = await supabase.from('arcapp_lessons_learned').upsert(record, { onConflict: 'id' }).select('id').single()
   const row = unwrap(res) as { id: string }
+  if (!params.id) void notifyGoogleChat(`📘 New lesson learned logged (${category}): ${title}`)
   return { id: row.id }
 }
 export function useSaveLessonLearned() {
@@ -2382,6 +2423,7 @@ async function saveTask(params: TaskInput): Promise<{ id: string }> {
         .select('id')
         .single()
   const row = unwrap(res) as { id: string }
+  if (!params.id && params.tag === 'crit') void notifyGoogleChat(`🚨 Critical to-do added: ${text}`)
   return { id: row.id }
 }
 export function useSaveTask() {

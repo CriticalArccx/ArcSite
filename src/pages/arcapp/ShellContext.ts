@@ -108,6 +108,9 @@ export type ShellContext = {
   /** This project's own dedicated Equipment Tracker Apps Script URL — see saveEquipmentTrackerSettings
    * in api.ts for why Phase Rules specifically need it (Supabase alone isn't enough for them). */
   equipmentTrackerScriptUrl: string
+  /** This project's Google Chat incoming webhook URL (Settings → "Google Chat") — see
+   * notifyGoogleChat in api.ts for who posts to it and the README's Google Chat section for setup. */
+  googleChatWebhookUrl: string
   settingsLoading: boolean
   onSaveSetting: (key: string, value: string) => Promise<void>
   onSaveDefaultAssignee: (prefix: string, result: DefaultAssignee) => Promise<void>
