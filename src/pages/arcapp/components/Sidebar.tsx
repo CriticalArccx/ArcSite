@@ -49,10 +49,55 @@ function insertionIndex(items: Array<{ to: string }>, before: string): number {
   return idx === -1 ? items.length : idx
 }
 
-type Props = { jointPackEnabled: boolean; assetAttributesEnabled: boolean; netaTrackerEnabled: boolean }
+type Props = {
+  jointPackEnabled: boolean
+  assetAttributesEnabled: boolean
+  netaTrackerEnabled: boolean
+  /** Settings → "Sidebar tabs" — admin-controlled per-project visibility for everything below
+   * except Dashboard ('/') and Settings itself ('/settings'), which are never toggleable: Dashboard
+   * is the landing page and Settings is where you'd turn either of those back on. Narrows further
+   * on top of the `requires` capability gate above where both apply (Checklists/Issues/Tamper
+   * Seals/RTFT) — never overrides it. */
+  showTodo: boolean
+  showMilestones: boolean
+  showSchedule: boolean
+  showChecklists: boolean
+  showIssues: boolean
+  showSubmittals: boolean
+  showLessonsLearned: boolean
+  showTamperSeals: boolean
+  showRtft: boolean
+  showEquipmentTracker: boolean
+}
 
-export default function Sidebar({ jointPackEnabled, assetAttributesEnabled, netaTrackerEnabled }: Props) {
-  const items = NAV.filter((item) => !item.requires || hasCapability(item.requires))
+export default function Sidebar({
+  jointPackEnabled,
+  assetAttributesEnabled,
+  netaTrackerEnabled,
+  showTodo,
+  showMilestones,
+  showSchedule,
+  showChecklists,
+  showIssues,
+  showSubmittals,
+  showLessonsLearned,
+  showTamperSeals,
+  showRtft,
+  showEquipmentTracker,
+}: Props) {
+  const visible: Record<string, boolean> = {
+    '/todo': showTodo,
+    '/milestones': showMilestones,
+    '/schedule': showSchedule,
+    '/checklists': showChecklists,
+    '/issues': showIssues,
+    '/submittals': showSubmittals,
+    '/lessonslearned': showLessonsLearned,
+    '/tamperseals': showTamperSeals,
+    '/rtft': showRtft,
+    '/equipmenttracker': showEquipmentTracker,
+  }
+  const items = NAV.filter((item) => (!item.requires || hasCapability(item.requires)) && visible[item.to] !== false)
   // Slotted after "Submittals" / before "Tamper Seals", matching where Joint Packs used to sit.
   if (jointPackEnabled) items.splice(insertionIndex(items, '/tamperseals'), 0, JOINT_PACKS_NAV_ITEM)
   // Slotted after "RTFT" / before "Equipment Tracker", matching where Attributes used to sit.

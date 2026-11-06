@@ -157,6 +157,16 @@ export default function AppShell() {
         milestoneStatusStyles?: MilestoneStatusStyles
         equipmentTrackerScriptUrl?: string
         googleChatWebhookUrl?: string
+        showTodo?: boolean
+        showMilestones?: boolean
+        showSchedule?: boolean
+        showChecklists?: boolean
+        showIssues?: boolean
+        showSubmittals?: boolean
+        showLessonsLearned?: boolean
+        showTamperSeals?: boolean
+        showRtft?: boolean
+        showEquipmentTracker?: boolean
       }
     | undefined
   const jointPackFolder = settingsData?.jointPackPhotosFolder ?? ''
@@ -184,6 +194,16 @@ export default function AppShell() {
   const milestoneStatusStyles = settingsData?.milestoneStatusStyles ?? DEFAULT_MILESTONE_STATUS_STYLES
   const equipmentTrackerScriptUrl = settingsData?.equipmentTrackerScriptUrl ?? ''
   const googleChatWebhookUrl = settingsData?.googleChatWebhookUrl ?? ''
+  const showTodo = settingsData?.showTodo ?? true
+  const showMilestones = settingsData?.showMilestones ?? true
+  const showSchedule = settingsData?.showSchedule ?? true
+  const showChecklists = settingsData?.showChecklists ?? true
+  const showIssues = settingsData?.showIssues ?? true
+  const showSubmittals = settingsData?.showSubmittals ?? true
+  const showLessonsLearned = settingsData?.showLessonsLearned ?? true
+  const showTamperSeals = settingsData?.showTamperSeals ?? true
+  const showRtft = settingsData?.showRtft ?? true
+  const showEquipmentTracker = settingsData?.showEquipmentTracker ?? true
   const cxAlloyLinkBaseDetected = (cxAlloyLinkBaseFn.data as { domain: string; projectId: string } | null | undefined) ?? null
   // A manual Settings override always wins over auto-detection — see getCxAlloyLinkBase in
   // api.ts for why auto-detection alone can come back null (no Equipment Tracker data synced yet
@@ -413,6 +433,16 @@ export default function AppShell() {
     milestoneStatusStyles,
     equipmentTrackerScriptUrl,
     googleChatWebhookUrl,
+    showTodo,
+    showMilestones,
+    showSchedule,
+    showChecklists,
+    showIssues,
+    showSubmittals,
+    showLessonsLearned,
+    showTamperSeals,
+    showRtft,
+    showEquipmentTracker,
     settingsLoading: settingsFn.loading,
     onSaveSetting: saveSetting,
     onSaveDefaultAssignee: saveDefaultAssignee,
@@ -446,7 +476,21 @@ export default function AppShell() {
       <ContextStrip />
 
       <div className="arcapp-layout">
-        <Sidebar jointPackEnabled={jointPackEnabled} assetAttributesEnabled={assetAttributesEnabled} netaTrackerEnabled={netaTrackerEnabled} />
+        <Sidebar
+          jointPackEnabled={jointPackEnabled}
+          assetAttributesEnabled={assetAttributesEnabled}
+          netaTrackerEnabled={netaTrackerEnabled}
+          showTodo={showTodo}
+          showMilestones={showMilestones}
+          showSchedule={showSchedule}
+          showChecklists={showChecklists}
+          showIssues={showIssues}
+          showSubmittals={showSubmittals}
+          showLessonsLearned={showLessonsLearned}
+          showTamperSeals={showTamperSeals}
+          showRtft={showRtft}
+          showEquipmentTracker={showEquipmentTracker}
+        />
 
         <main className={isFullBleed ? 'main-full' : undefined}>
           <Outlet context={outletContext} />

@@ -111,6 +111,18 @@ export type ShellContext = {
   /** This project's Google Chat incoming webhook URL (Settings → "Google Chat") — see
    * notifyGoogleChat in api.ts for who posts to it and the README's Google Chat section for setup. */
   googleChatWebhookUrl: string
+  /** Sidebar tab visibility toggles (Settings → "Sidebar tabs") — see AppSettings in api.ts for
+   * why these default to visible rather than hidden. Sidebar.tsx is the only thing that reads these. */
+  showTodo: boolean
+  showMilestones: boolean
+  showSchedule: boolean
+  showChecklists: boolean
+  showIssues: boolean
+  showSubmittals: boolean
+  showLessonsLearned: boolean
+  showTamperSeals: boolean
+  showRtft: boolean
+  showEquipmentTracker: boolean
   settingsLoading: boolean
   onSaveSetting: (key: string, value: string) => Promise<void>
   onSaveDefaultAssignee: (prefix: string, result: DefaultAssignee) => Promise<void>

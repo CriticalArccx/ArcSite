@@ -133,6 +133,17 @@ local to `SettingsPanel.tsx`), same "Only admins can change settings." messaging
   only reachable once the enable toggle up here already let you get there.
 - **Workflows** — has no page of its own.
 - **Authorized Users** — app-wide access control, not a per-module thing.
+- **Sidebar tabs** (added 2026-11-06) — a show/hide toggle for every Sidebar tab except Dashboard
+  and Settings themselves: To-Do, Deliverables, Activities, Checklists, Issues, Submittals, Lessons
+  Learned, Tamper Seals, RTFT, Equipment Tracker. Unlike the Joint Pack/Asset Attributes/NETA
+  toggles above, these default to **visible** when unset (`parseVisible` in `src/lib/api.ts` treats
+  anything but an explicit `"false"` as shown) — these are pre-existing tabs every project already
+  had, not new modules a project opts into, so leaving the setting key unwritten changes nothing.
+  Where a tab is also gated by a `project.ts` capability (Checklists/Issues need `cxAlloyActions`,
+  Tamper Seals/RTFT need `siteLogging`), both have to be true — this toggle only narrows further,
+  it can't make an unwired capability show up. `Sidebar.tsx` is the only thing that reads these;
+  there's no route-level guard behind a hidden tab (unlike Joint Packs' "not wired up yet" page),
+  since this is a declutter preference, not a missing-backend error.
 
 Per-page breakdown of what moved where:
 - **Checklists page**: Checklist Ready status picker, Checklist To-Do toggle + default assignee.

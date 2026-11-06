@@ -1291,6 +1291,25 @@ export type AppSettings = {
    * this project (notifyGoogleChat no-ops rather than erroring). See README's Google Chat section
    * for the full setup, including the separate interactive bot (chat-bot Edge Function). */
   googleChatWebhookUrl: string
+  /** Sidebar tab visibility (Settings → "Sidebar tabs", added 2026-11-06) — lets an admin hide a
+   * tab this project just doesn't use (e.g. a project with no tamper seals to log) without it
+   * disappearing for every other project too. Deliberately default to VISIBLE when unset (see
+   * parseVisible below) rather than the "off until set" pattern jointPackEnabled/
+   * assetAttributesEnabled/netaTrackerEnabled use — these are pre-existing tabs already live for
+   * every project, not brand-new modules a project opts into. Dashboard and Settings themselves
+   * aren't toggleable — see Sidebar.tsx. Where a tab is ALSO gated by a project.ts capability
+   * (Checklists/Issues need cxAlloyActions, Tamper Seals/RTFT need siteLogging), both have to be
+   * true for the tab to show — this toggle narrows further, it never overrides the capability gate. */
+  showTodo: boolean
+  showMilestones: boolean
+  showSchedule: boolean
+  showChecklists: boolean
+  showIssues: boolean
+  showSubmittals: boolean
+  showLessonsLearned: boolean
+  showTamperSeals: boolean
+  showRtft: boolean
+  showEquipmentTracker: boolean
 }
 export type MilestoneStatusStyle = { label: string; color: string }
 export type MilestoneStatusStyles = Record<Milestone['status'], MilestoneStatusStyle>
@@ -1308,6 +1327,13 @@ const SETTINGS_DEFAULTS = {
   milestoneGoThreshold: 70,
   milestoneCautionThreshold: 40,
   milestoneStatusStyles: DEFAULT_MILESTONE_STATUS_STYLES,
+}
+/** Default-VISIBLE boolean parse for the Sidebar tab toggles above — unset/anything-but-"false"
+ * means shown, only an explicit "false" hides it. Opposite default from the other settings'
+ * `=== 'true'` checks (default off) since these tabs already exist and shouldn't vanish the moment
+ * this setting key doesn't exist yet for a project. */
+function parseVisible(v: string | undefined): boolean {
+  return v !== 'false'
 }
 function parseThreshold(v: string | undefined, fallback: number): number {
   const n = Number(v)
@@ -1372,6 +1398,16 @@ async function getSettings(): Promise<AppSettings> {
     milestoneStatusStyles: parseMilestoneStatusStyles(map.get('milestone_status_styles')),
     equipmentTrackerScriptUrl: map.get('equipment_tracker_script_url') ?? '',
     googleChatWebhookUrl: map.get('google_chat_webhook_url') ?? '',
+    showTodo: parseVisible(map.get('show_todo')),
+    showMilestones: parseVisible(map.get('show_milestones')),
+    showSchedule: parseVisible(map.get('show_schedule')),
+    showChecklists: parseVisible(map.get('show_checklists')),
+    showIssues: parseVisible(map.get('show_issues')),
+    showSubmittals: parseVisible(map.get('show_submittals')),
+    showLessonsLearned: parseVisible(map.get('show_lessons_learned')),
+    showTamperSeals: parseVisible(map.get('show_tamper_seals')),
+    showRtft: parseVisible(map.get('show_rtft')),
+    showEquipmentTracker: parseVisible(map.get('show_equipment_tracker')),
   }
 }
 export function useGetSettings() {
@@ -1412,6 +1448,16 @@ const ALLOWED_SETTING_KEYS = new Set([
   'milestone_status_styles',
   'equipment_tracker_script_url',
   'google_chat_webhook_url',
+  'show_todo',
+  'show_milestones',
+  'show_schedule',
+  'show_checklists',
+  'show_issues',
+  'show_submittals',
+  'show_lessons_learned',
+  'show_tamper_seals',
+  'show_rtft',
+  'show_equipment_tracker',
 ])
 async function saveSetting(params: { key: string; value: string }): Promise<{ key: string; value: string }> {
   if (!ALLOWED_SETTING_KEYS.has(params.key)) throw new Error(`Unknown setting key: ${params.key}`)

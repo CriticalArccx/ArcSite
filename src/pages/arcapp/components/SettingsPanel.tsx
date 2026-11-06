@@ -12,6 +12,16 @@ type Props = {
   cxAlloyLinkBaseDetected: { domain: string; projectId: string } | null
   cxalloyLinkBaseOverride: string
   googleChatWebhookUrl: string
+  showTodo: boolean
+  showMilestones: boolean
+  showSchedule: boolean
+  showChecklists: boolean
+  showIssues: boolean
+  showSubmittals: boolean
+  showLessonsLearned: boolean
+  showTamperSeals: boolean
+  showRtft: boolean
+  showEquipmentTracker: boolean
   /** Broader than isAdmin — any signed-in, authorized ArcApp user. Only used here for Workflows
    * (item catalog + building workflows), which isn't admin-restricted. */
   canEdit: boolean
@@ -48,6 +58,16 @@ export default function SettingsPanel({
   cxAlloyLinkBaseDetected,
   cxalloyLinkBaseOverride,
   googleChatWebhookUrl,
+  showTodo,
+  showMilestones,
+  showSchedule,
+  showChecklists,
+  showIssues,
+  showSubmittals,
+  showLessonsLearned,
+  showTamperSeals,
+  showRtft,
+  showEquipmentTracker,
   canEdit,
   isAdmin,
   canManageWorkflows,
@@ -87,6 +107,95 @@ export default function SettingsPanel({
           loading={loading}
           onSave={(v) => onSaveSetting('cxalloy_link_base_override', v)}
         />
+        <h3 style={{ marginTop: 28, marginBottom: 4 }}>Sidebar tabs</h3>
+        <div className="q-hint" style={{ marginBottom: 14, maxWidth: 560 }}>
+          Hide a tab this project doesn&apos;t use — it just disappears from the Sidebar, nothing is
+          deleted. Dashboard and Settings are always shown. Checklists/Issues and Tamper Seals/RTFT
+          also need their underlying capability wired up (see the project switcher section above) —
+          turning one on here won&apos;t show it if that isn&apos;t ready yet.
+        </div>
+        <ToggleField
+          label="To-Do"
+          hint="The To-Do tab (Teams, task assignment, the Board/List views)."
+          initial={showTodo}
+          canEdit={isAdmin}
+          loading={loading}
+          onSave={(v) => onSaveSetting('show_todo', v ? '' : 'false')}
+        />
+        <ToggleField
+          label="Deliverables"
+          hint="The Milestones/Deliverables tab."
+          initial={showMilestones}
+          canEdit={isAdmin}
+          loading={loading}
+          onSave={(v) => onSaveSetting('show_milestones', v ? '' : 'false')}
+        />
+        <ToggleField
+          label="Activities"
+          hint="The Activities/Schedule tab."
+          initial={showSchedule}
+          canEdit={isAdmin}
+          loading={loading}
+          onSave={(v) => onSaveSetting('show_schedule', v ? '' : 'false')}
+        />
+        <ToggleField
+          label="Checklists"
+          hint="The Checklists tab (also requires this project's CxAlloy actions to be wired up)."
+          initial={showChecklists}
+          canEdit={isAdmin}
+          loading={loading}
+          onSave={(v) => onSaveSetting('show_checklists', v ? '' : 'false')}
+        />
+        <ToggleField
+          label="Issues"
+          hint="The Issues tab (also requires this project's CxAlloy actions to be wired up)."
+          initial={showIssues}
+          canEdit={isAdmin}
+          loading={loading}
+          onSave={(v) => onSaveSetting('show_issues', v ? '' : 'false')}
+        />
+        <ToggleField
+          label="Submittals"
+          hint="The Submittals tab."
+          initial={showSubmittals}
+          canEdit={isAdmin}
+          loading={loading}
+          onSave={(v) => onSaveSetting('show_submittals', v ? '' : 'false')}
+        />
+        <ToggleField
+          label="Lessons Learned"
+          hint="The Lessons Learned tab."
+          initial={showLessonsLearned}
+          canEdit={isAdmin}
+          loading={loading}
+          onSave={(v) => onSaveSetting('show_lessons_learned', v ? '' : 'false')}
+        />
+        <ToggleField
+          label="Tamper Seals"
+          hint="The Tamper Seals tab (also requires this project's own Assets/RTFT tables)."
+          initial={showTamperSeals}
+          canEdit={isAdmin}
+          loading={loading}
+          onSave={(v) => onSaveSetting('show_tamper_seals', v ? '' : 'false')}
+        />
+        <ToggleField
+          label="RTFT"
+          hint="The RTFT tab (also requires this project's own Assets/RTFT tables)."
+          initial={showRtft}
+          canEdit={isAdmin}
+          loading={loading}
+          onSave={(v) => onSaveSetting('show_rtft', v ? '' : 'false')}
+        />
+        <ToggleField
+          label="Equipment Tracker"
+          hint="The Equipment Tracker tab."
+          initial={showEquipmentTracker}
+          canEdit={isAdmin}
+          loading={loading}
+          onSave={(v) => onSaveSetting('show_equipment_tracker', v ? '' : 'false')}
+        />
+
+        <h3 style={{ marginTop: 28, marginBottom: 4 }}>Modules</h3>
         <ToggleField
           label="Joint Pack Photos enabled for this project"
           hint="Turns on the Joint Packs page and its Sidebar nav item. Requires this project's own Joint Pack Sheet + Apps Script to already be deployed (see README) — turning this on before that's ready shows a clean 'not wired up yet' error instead of breaking anything. The rest of Joint Pack Photos' settings (script URL, Drive folder) are on the Joint Packs page itself once this is on."
