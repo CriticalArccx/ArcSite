@@ -18,6 +18,7 @@ import Sidebar from './components/Sidebar'
 import ContextStrip from './components/ContextStrip'
 import ActivityDrawer from './components/ActivityDrawer'
 import SignInPage from './components/SignInPage'
+import ProjectPickerPage from './components/ProjectPickerPage'
 import { useOpenItemsData } from './components/OpenItemsTodoPanel'
 import type { SealPayloadRow } from './components/TamperSealSection'
 import type { RtftPayload } from './components/RtftSection'
@@ -32,7 +33,7 @@ const SOURCE_LABEL = `${CURRENT_PROJECT}BackEndData`
  * footer) and the Activity Drawer, which can be opened from more than one page.
  */
 export default function AppShell() {
-  const { user, loading: userLoading, authError, signInWithGoogle, signInWithEmail, signOut, clearAuthError } = useCurrentUser()
+  const { user, loading: userLoading, authError, projectChoice, confirmProject, signInWithGoogle, signInWithEmail, signOut, clearAuthError } = useCurrentUser()
   const location = useLocation()
   // The tracker is a wide, data-dense grid — it gets the whole page (no 1200px content cap, no
   // card chrome, no footer) instead of living in the standard boxed-panel content column every
@@ -423,6 +424,9 @@ export default function AppShell() {
   // that) — this only decides what JSX comes out the other end, and now that the fetch effects
   // above are themselves gated on `!!user`, no data request goes out before this point either.
   if (!user) {
+    if (projectChoice) {
+      return <ProjectPickerPage options={projectChoice.options} defaultKey={projectChoice.defaultKey} onChoose={confirmProject} onSignOut={signOut} />
+    }
     return (
       <SignInPage
         loading={userLoading}

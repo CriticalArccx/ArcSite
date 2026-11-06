@@ -1037,6 +1037,23 @@ nothing to migrate) or a specific set. This is enforced in both places that matt
   prior, explicit requests — see each table's own section below), so restricting only
   `authenticated` reads would add complexity without closing anything real.
 
+**Project picker at sign-in — `ProjectPickerPage.tsx`, added 2026-11-06.** Before this, anyone
+allowed into more than one project (including every unrestricted/admin account, since
+`allowed_projects = null` means "all of them") just silently landed in whatever project was last in
+`localStorage` — STY4 by default — with no indication other projects existed short of finding the
+Topbar switcher themselves. Now, right after a successful sign-in, if the signed-in person can reach
+more than one project, they see a dedicated full-page picker (same visual shell as `SignInPage.tsx`)
+listing every project they're allowed into, with whichever one was last used marked "Last used";
+clicking one continues straight into the app. Someone restricted to exactly one project skips this
+entirely, same as before.
+
+This happens **once per browser session, not once per page load** — `useCurrentUser.ts` tracks it
+via `sessionStorage` (`arcapp_project_confirmed`, cleared on sign-out), not `localStorage`, so
+switching projects later from the Topbar (which reloads the page) or just refreshing the tab doesn't
+re-prompt, but closing the browser and signing in again later does. `confirmProject(key)` either
+calls the existing `setCurrentProject(key)` (a project switch — reloads the page) or, if they picked
+the project that was already current, finishes sign-in in place with no reload at all.
+
 **Bulk Add** (added 2026-10-25, `AuthorizedUsersManager.tsx`/`bulkAddAuthorizedUsers` in
 `src/lib/api.ts`) — a collapsible textarea next to the one-at-a-time form for pasting many people
 at once, one per line: `email`, `email, name`, or `email, name, role` (comma- or tab-separated, so
