@@ -3,7 +3,7 @@ import type { ScheduleRow } from './types'
 /* =====================================================================
    REFERENCE PANEL — sample "what to look for" content, picked by keyword
    match against the activity/asset/place text. Ported from the original
-   ArcApp dashboard's SAMPLE_CHECKLISTS.
+   ArcSite dashboard's SAMPLE_CHECKLISTS.
    ===================================================================== */
 
 type Checklist = {

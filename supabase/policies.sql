@@ -59,7 +59,7 @@ CREATE POLICY "workflows_write_public" ON arcapp_workflows
 
 -- Settings specifically requires role = 'admin', not just any authorized user — "editors cannot
 -- adjust settings" (requested 2026-09-24). Was `STY4authorized_editors`-based ("*_write_editors")
--- until the same date, when ArcApp's whole permission model moved to its own table — see
+-- until the same date, when ArcSite's whole permission model moved to its own table — see
 -- arcapp_authorized_users below.
 CREATE POLICY "settings_write_admins" ON arcapp_settings
   FOR ALL TO authenticated
@@ -146,10 +146,10 @@ CREATE POLICY "tasks_write_public" ON arcapp_tasks
 
 -- =============================================================================
 -- APPLIED — arcapp_authorized_users (sign-in gate + roles). Deliberately NOT wide open like the
--- tables above — this IS the access control list, and as of 2026-09-24 it's ArcApp's ENTIRE
+-- tables above — this IS the access control list, and as of 2026-09-24 it's ArcSite's ENTIRE
 -- permission model (see schema.sql for the role column and CHECK constraint).
 --
--- Read was any signed-in ArcApp user, full roster — widened 2026-09-25 (was: your OWN row only)
+-- Read was any signed-in ArcSite user, full roster — widened 2026-09-25 (was: your OWN row only)
 -- so every "assign to a specific person" UI (Teams, task/item assignment, Settings' default
 -- assignee) can offer a dropdown of real authorized users instead of free-text name/email entry,
 -- for anyone doing the assigning, not just admins.
@@ -169,7 +169,7 @@ CREATE POLICY "tasks_write_public" ON arcapp_tasks
 -- than an inline subquery, specifically because a same-table subquery here recurses infinitely —
 -- this table is the one that surfaced that bug (see the note at the top of this file). This checks
 -- THIS table to decide who can write to THIS table rather than deferring to STY4authorized_editors
--- — by explicit request, so ArcApp's access control has no dependency on LaunchPad's shared table
+-- — by explicit request, so ArcSite's access control has no dependency on LaunchPad's shared table
 -- at all, in either direction.
 -- =============================================================================
 
@@ -184,7 +184,7 @@ CREATE POLICY "authorized_users_write_admins" ON arcapp_authorized_users
 -- =============================================================================
 -- APPLIED — arcapp_submittals (requested 2026-09-19). Viewable without signing in (matches
 -- Checklists/Issues/Joint Pack Photos — status is useful to anyone on-site), writes require any
--- authorized ArcApp user (admin or editor — Submittals isn't Settings, so no admin-only check).
+-- authorized ArcSite user (admin or editor — Submittals isn't Settings, so no admin-only check).
 -- =============================================================================
 
 ALTER TABLE arcapp_submittals ENABLE ROW LEVEL SECURITY;
@@ -235,7 +235,7 @@ CREATE POLICY "item_assignments_write_public" ON arcapp_item_assignments
 -- reference any column value), so isolation between projects was enforced entirely app-side, by
 -- every query in src/lib/api.ts filtering/stamping `.eq('project_key', CURRENT_PROJECT)`.
 --
--- SUPERSEDED 2026-11-02 — that trade-off let any authenticated ArcApp user write to ANY project's
+-- SUPERSEDED 2026-11-02 — that trade-off let any authenticated ArcSite user write to ANY project's
 -- data by simply calling Supabase directly with a different project_key, bypassing the Topbar
 -- switcher entirely (the switcher is just UI). See the per-project write-authorization block below
 -- for the fix: every one of these tables' authenticated-write policies now also requires
@@ -245,7 +245,7 @@ CREATE POLICY "item_assignments_write_public" ON arcapp_item_assignments
 
 -- =============================================================================
 -- APPLIED — arcapp_milestones (requested 2026-10-27). Same "viewable without signing in, writes
--- need any authorized ArcApp user" pattern as arcapp_submittals above — Milestones isn't Settings,
+-- need any authorized ArcSite user" pattern as arcapp_submittals above — Milestones isn't Settings,
 -- so no admin-only check.
 -- =============================================================================
 
@@ -267,7 +267,7 @@ CREATE POLICY "milestones_write_authorized" ON arcapp_milestones
 -- tables below was deliberately left wide open by earlier requests (Workflows, Teams/Tasks, Item
 -- Assignments — "no sign-in required" kiosk-style use) and is NOT changed here — anon has no email
 -- to check a roster against in the first place, and restricting it would just break that. What
--- changes is `authenticated`: a signed-in ArcApp session can no longer write a row for a
+-- changes is `authenticated`: a signed-in ArcSite session can no longer write a row for a
 -- project_key its own allowed_projects doesn't include, closing the gap the comment above this
 -- block used to describe as an accepted trade-off.
 --
@@ -383,7 +383,7 @@ GRANT EXECUTE ON FUNCTION arcapp_authorized_users_directory() TO authenticated;
 
 -- =============================================================================
 -- APPLIED — arcapp_lessons_learned (requested 2026-11-03). Same "viewable without signing in,
--- writes need any authorized ArcApp user" pattern as arcapp_submittals/arcapp_milestones — a new
+-- writes need any authorized ArcSite user" pattern as arcapp_submittals/arcapp_milestones — a new
 -- table, so unlike those two it's built with the project-scoped write check
 -- (arcapp_user_allowed_project(), see the per-project write authorization block above) from the
 -- start rather than needing a later migration to add it.

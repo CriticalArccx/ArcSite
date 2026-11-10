@@ -54,7 +54,7 @@ export type ShellContext = {
    * Sidebar nav item and the page itself; deliberately independent of `cxAlloyActions`. */
   assetAttributesEnabled: boolean
 
-  /** Any signed-in, authorized ArcApp user (admin or editor) — governs Submittals, Asset
+  /** Any signed-in, authorized ArcSite user (admin or editor) — governs Submittals, Asset
    * Attributes, Workflow item catalog, etc. Settings specifically requires `isAdmin` instead. */
   canEdit: boolean
   /** From arcapp_authorized_users.role === 'admin' — the only role that can change Settings

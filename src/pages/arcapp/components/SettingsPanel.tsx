@@ -22,7 +22,7 @@ type Props = {
   showTamperSeals: boolean
   showRtft: boolean
   showEquipmentTracker: boolean
-  /** Broader than isAdmin — any signed-in, authorized ArcApp user. Only used here for Workflows
+  /** Broader than isAdmin — any signed-in, authorized ArcSite user. Only used here for Workflows
    * (item catalog + building workflows), which isn't admin-restricted. */
   canEdit: boolean
   /** From arcapp_authorized_users.role === 'admin' — every other field on this page requires this,

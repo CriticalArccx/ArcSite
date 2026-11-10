@@ -115,11 +115,11 @@ WHERE NOT EXISTS (SELECT 1 FROM arcapp_tasks);
 -- APPLIED — arcapp_authorized_users (requested 2026-09-18; role column + full site gate added
 -- 2026-09-24).
 --
--- ArcApp's entire access-control model: who may sign in at all, and whether they're an admin
+-- ArcSite's entire access-control model: who may sign in at all, and whether they're an admin
 -- (can change Settings, including this table) or an editor (can't) — deliberately NEVER
 -- STY4authorized_editors (LaunchPad's shared edit-rights table, with its own separate is_admin/
--- role columns for a different purpose), by explicit request to keep ArcApp's permission system
--- independent of it. Someone can be an ArcApp admin without being an editor on the LaunchPad side,
+-- role columns for a different purpose), by explicit request to keep ArcSite's permission system
+-- independent of it. Someone can be an ArcSite admin without being an editor on the LaunchPad side,
 -- or vice versa — the two are unrelated on purpose.
 --
 -- The sign-in gate itself lives in src/lib/useCurrentUser.ts: after any successful auth (Google
@@ -141,7 +141,7 @@ CREATE TABLE IF NOT EXISTS arcapp_authorized_users (
 -- deliberately NOT bulk-seeded from STY4authorized_editors this time (that table seeded the
 -- allowlist itself back on 2026-09-18, before this table had a role column or the site required
 -- sign-in at all; re-running that seed now would import ~20 LaunchPad-side identities into what's
--- meant to be a clean, independent ArcApp roster). ON CONFLICT keeps this safe to re-run.
+-- meant to be a clean, independent ArcSite roster). ON CONFLICT keeps this safe to re-run.
 --
 -- The ~19 rows the 2026-09-18 bulk-seed had left in this table (from before this comment's own
 -- migration existed) were pruned by hand on 2026-09-24, by request, down to just this one row —
@@ -191,7 +191,7 @@ WHERE NOT EXISTS (SELECT 1 FROM storage.buckets WHERE id = 'submittals');
 -- NOT YET APPLIED — arcapp_item_assignments (Checklist/Issue To-Do, requested 2026-09-21).
 --
 -- Checklists and Issues themselves live in the read-only CxAlloy Google Sheet (via Apps
--- Script) — this table is ArcApp's own place to record who's responsible for chasing down a
+-- Script) — this table is ArcSite's own place to record who's responsible for chasing down a
 -- specific open checklist/issue, keyed by its CxAlloy id (`item_id`) plus which sheet it came
 -- from (`item_type`). Same "at most one of team or person, enforced app-side, unassigned is
 -- valid" convention as arcapp_tasks above; the UNIQUE constraint is what makes
@@ -213,13 +213,13 @@ CREATE TABLE IF NOT EXISTS arcapp_item_assignments (
 -- ---------------------------------------------------------------------------
 -- APPLIED — SAN-NT1B project switcher (requested 2026-09-21).
 --
--- ArcApp already shared its Supabase project with LaunchPad, which turned out to already track
+-- ArcSite already shared its Supabase project with LaunchPad, which turned out to already track
 -- SAN-NT1B as a full second project (own Apps Script, own <prefix>dropdownoptions/BackEndData/
 -- authorized_editors tables — see src/lib/project.ts for the two capability gaps found there:
--- no <prefix>Assets/<prefix>RTFT tables yet, and its Apps Script doesn't have the ArcApp-specific
+-- no <prefix>Assets/<prefix>RTFT tables yet, and its Apps Script doesn't have the ArcSite-specific
 -- actions added yet). CxAlloy/Sheet-backed reads already carry their own table-name prefix per
 -- project (STY4dropdownoptions vs SANNT1Bdropdownoptions, etc. — just a dynamic prefix, no schema
--- change needed there). But every ArcApp-OWNED table below was a single shared pool with no
+-- change needed there). But every ArcSite-OWNED table below was a single shared pool with no
 -- notion of "which site" at all — these `project_key` columns are what make picking a different
 -- project in the Topbar switcher actually isolate that project's Teams/Tasks/Submittals/Settings/
 -- Workflows/Checklist-Issue-assignments from every other project's, instead of just changing which
@@ -283,7 +283,7 @@ UPDATE arcapp_tasks SET status = 'done' WHERE done = true AND status <> 'done';
 -- ---------------------------------------------------------------------------
 -- APPLIED — arcapp_authorized_users.allowed_projects (requested 2026-11-02).
 --
--- Closes a real gap: any authorized ArcApp user (admin or editor) could switch the Topbar project
+-- Closes a real gap: any authorized ArcSite user (admin or editor) could switch the Topbar project
 -- picker into STY4, SAN-NT1B, or RSE1A and read/write that project's data, regardless of which
 -- site they actually work on — sign-in only ever checked "is this email on the roster at all,"
 -- never "which project(s) is this email for." See project.ts's CAPABILITIES comment and

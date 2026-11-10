@@ -1,5 +1,5 @@
 /**
- * Which LaunchPad project (site) ArcApp is currently scoped to — STY4 (Phoenix DC3) or SANNT1B
+ * Which LaunchPad project (site) ArcSite is currently scoped to — STY4 (Phoenix DC3) or SANNT1B
  * (SAN-NT1B), both already-existing `launchpad_projects` rows with their own Sheet-backed tables
  * and Apps Script deployment. Read once at module load and treated as immutable for the page's
  * lifetime — switching projects (setCurrentProject) writes the choice to localStorage and reloads
@@ -62,7 +62,7 @@ export function projectLabel(key: ProjectKey): string {
  * arcapp_settings — see api.ts/SettingsPanel.tsx) as of 2026-09-25, by request: unlike the two
  * gaps above, NETA Tracker's Sheet/script is a brand-new per-site build every time (not just "add
  * an action to an existing script"), so an admin turning it on for a newly-onboarded site
- * shouldn't need a code change and redeploy of ArcApp itself.
+ * shouldn't need a code change and redeploy of ArcSite itself.
  */
 export type Capability = 'siteLogging' | 'cxAlloyActions'
 
@@ -72,7 +72,7 @@ const CAPABILITIES: Record<ProjectKey, Record<Capability, boolean>> = {
   // getIssues/getCxAlloySettings added (see AppendToCxAlloyScript.gs), confirmed deployed.
   SANNT1B: { siteLogging: false, cxAlloyActions: true },
   // Added 2026-11-02 — RSE1A's base LaunchPad project (its own launchpad_projects row, Apps
-  // Script deployment, dropdownoptions/BackEndData sheet) exists, but neither ArcApp-specific
+  // Script deployment, dropdownoptions/BackEndData sheet) exists, but neither ArcSite-specific
   // capability has been confirmed yet: siteLogging needs RSE1AAssets/RSE1ARTFT tables that don't
   // exist for a new project until built, and cxAlloyActions needs the same custom actions added
   // to SAN-NT1B's script (AppendToCxAlloyScript.gs) also added to RSE1A's own deployment. Starts

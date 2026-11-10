@@ -121,7 +121,7 @@ export default function AppShell() {
   // user — see the `!user` gate near the bottom of this component — so `canEdit` no longer needs
   // its own separate authorization check the way it did when the app was browsable while signed
   // out. It's just "is anyone signed in at all" now (admin or editor); `isAdmin` is the narrower
-  // gate Settings actually uses. Deliberately ArcApp's own role (arcapp_authorized_users.role),
+  // gate Settings actually uses. Deliberately ArcSite's own role (arcapp_authorized_users.role),
   // not LaunchPad's shared STY4authorized_editors — see src/lib/useCurrentUser.ts.
   const canEdit = !!user
   const isAdmin = user?.role === 'admin'
@@ -497,7 +497,7 @@ export default function AppShell() {
 
           {!isFullBleed && (
             <footer>
-              ArcApp Commissioning · {projectLabel(CURRENT_PROJECT)} · Deliverables are computed live
+              ArcSite Commissioning · {projectLabel(CURRENT_PROJECT)} · Deliverables are computed live
               from their completion criteria, To-Dos read live from arcapp_tasks, and Scheduled
               Activities from {SOURCE_LABEL}
             </footer>

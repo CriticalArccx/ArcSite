@@ -174,7 +174,7 @@ function headerField(label: string, value: string, onChange: (v: string) => void
  * System Config + Phase Rules Engine — LaunchPad's "Settings" modal, ported in full (added
  * 2026-10-29; see the Equipment Status Tracker section in api.ts for why Phase Rules specifically
  * need the Apps Script round trip this makes on save, not just a Supabase write). Field-for-field
- * match of LaunchPad's modal content; restyled to ArcApp's dark theme like the rest of this page.
+ * match of LaunchPad's modal content; restyled to ArcSite's dark theme like the rest of this page.
  */
 export default function EquipmentTrackerSettingsModal({
   config,

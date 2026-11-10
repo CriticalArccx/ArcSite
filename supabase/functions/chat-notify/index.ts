@@ -1,6 +1,6 @@
-// chat-notify — outbound ArcApp → Google Chat notifications.
+// chat-notify — outbound ArcSite → Google Chat notifications.
 //
-// Called by the ArcApp web client (src/lib/api.ts, notifyGoogleChat/sendChatTestMessage) via
+// Called by the ArcSite web client (src/lib/api.ts, notifyGoogleChat/sendChatTestMessage) via
 // supabase.functions.invoke('chat-notify', { body: { projectKey, text } }). Deployed WITH the
 // default JWT verification on (no --no-verify-jwt) — the caller must be a real signed-in Supabase
 // session, which this function then re-checks against arcapp_user_allowed_project(projectKey) so

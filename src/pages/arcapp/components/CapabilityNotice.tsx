@@ -4,7 +4,7 @@ import { CURRENT_PROJECT, projectLabel } from '../../../lib/project'
 /** Shown in place of a whole page/panel when the current project lacks a capability it needs
  * (see src/lib/project.ts) — e.g. Tamper Seals/RTFT for a project with no <prefix>Assets/
  * <prefix>RTFT table yet, or Checklists/Issues/Asset Attributes for a project whose Apps Script
- * hasn't had the ArcApp actions added. The Sidebar already hides the nav link for these, so this
+ * hasn't had the ArcSite actions added. The Sidebar already hides the nav link for these, so this
  * is what a direct URL visit (or an old bookmark) sees instead of a raw fetch error. */
 export default function CapabilityNotice({ feature, reason, id }: { feature: string; reason: string; id?: string }) {
   return (

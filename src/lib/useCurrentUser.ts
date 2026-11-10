@@ -28,7 +28,7 @@ export type CurrentUser = {
   /** Display name — from arcapp_authorized_users if an admin set one, else Google's profile name, else the email. */
   name: string
   /** From arcapp_authorized_users.role — 'admin' can edit Settings, 'editor' can't. Deliberately
-   * ArcApp's own concept, not shared with LaunchPad's STY4authorized_editors table (which has its
+   * ArcSite's own concept, not shared with LaunchPad's STY4authorized_editors table (which has its
    * own separate is_admin/role columns for a different purpose — edit rights on the CxAlloy-shared
    * side of things). */
   role: UserRole
@@ -143,7 +143,7 @@ export function useCurrentUser(): {
         if (cancelled) return
         if (res.error) throw new Error(res.error.message)
         if (!res.data) {
-          setAuthError(`${base.email} isn't authorized for ArcApp yet. Contact an administrator to be added.`)
+          setAuthError(`${base.email} isn't authorized for ArcSite yet. Contact an administrator to be added.`)
           setUser(null)
           setLoading(false)
           await supabase.auth.signOut()
@@ -152,10 +152,10 @@ export function useCurrentUser(): {
         const row = res.data as { name: string | null; role: string | null; allowed_projects: string[] | null }
         const rawAllowed = Array.isArray(row.allowed_projects) ? row.allowed_projects.filter(isProjectKey) : null
         // Empty array (every entry pruned, or an admin genuinely assigned zero projects) means
-        // "authorized for ArcApp but not let into any site" — a real state, not a bug, so it gets
+        // "authorized for ArcSite but not let into any site" — a real state, not a bug, so it gets
         // its own clear message rather than silently falling back to "all projects".
         if (rawAllowed && rawAllowed.length === 0) {
-          setAuthError(`${base.email} is authorized for ArcApp but isn't assigned to any project yet. Contact an administrator.`)
+          setAuthError(`${base.email} is authorized for ArcSite but isn't assigned to any project yet. Contact an administrator.`)
           setUser(null)
           setLoading(false)
           await supabase.auth.signOut()
@@ -228,7 +228,7 @@ export function useCurrentUser(): {
     setAuthError(null)
     // Without emailRedirectTo this fell back to the shared Supabase project's default Site URL
     // — which is LaunchPad's, since this project is shared with it — landing the magic-link
-    // click there instead of back in ArcApp. Google sign-in already passed its own redirectTo
+    // click there instead of back in ArcSite. Google sign-in already passed its own redirectTo
     // (see signInWithGoogle above); this was the one place it was missing.
     const { error } = await supabase.auth.signInWithOtp({
       email,

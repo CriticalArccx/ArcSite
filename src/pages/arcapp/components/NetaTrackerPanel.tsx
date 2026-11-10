@@ -280,7 +280,7 @@ function ReturnedRow({ row }: { row: NetaReturnedRow }) {
 /**
  * Mimics the "STY4 NETA Tracker" Google Sheet's Submissions/Returned Files tabs — same Zone >
  * Area > Asset Category grouping, same checkboxes, same Comments field — with every edit here
- * writing straight back to that live sheet (see updateNetaField in api.ts) instead of ArcApp
+ * writing straight back to that live sheet (see updateNetaField in api.ts) instead of ArcSite
  * keeping a separate copy. Gated by the per-project `netaTrackerEnabled` Settings toggle (see
  * ShellContext) rather than a project.ts capability, so an admin can turn it on for a new site.
  */

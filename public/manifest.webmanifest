@@ -1,6 +1,6 @@
 {
-  "name": "ArcApp — On-site",
-  "short_name": "ArcApp",
+  "name": "ArcSite — On-site",
+  "short_name": "ArcSite",
   "description": "Mission Control for Commissioning",
   "start_url": "/",
   "display": "standalone",
