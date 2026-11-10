@@ -7,13 +7,13 @@ html, body, #root{ margin:0; padding:0; min-height:100%; background:#141718; }
 
 /* Color tokens re-tuned 2026-11-02 to the org's shared Design System palette (its "Arc Green",
    literally named for this app, becomes --green/--green-dim/--green-soft; the rest of its dark-mode
-   neutrals — Page/Border/Surface — replace ArcApp's old cool blue-black scale with its warm
+   neutrals — Page/Border/Surface — replace ArcSite's old cool blue-black scale with its warm
    charcoal one; tokens the design system doesn't define for dark mode, e.g. --bg-elev-2/
    --border-strong/--text-muted, are derived to continue its own light↔dark value relationships
-   rather than invented from scratch). Kept ArcApp's existing single-accent structure (green as
+   rather than invented from scratch). Kept ArcSite's existing single-accent structure (green as
    both primary action and focus/selection color) rather than adopting the design system's separate
    Petrol-primary/Green-accent split, by request — a smaller, more reversible change than a full
-   identity shift away from ArcApp's all-green look. */
+   identity shift away from ArcSite's all-green look. */
 .arcapp{
   --bg:#141718;
   --bg-elev:#1c1f21;

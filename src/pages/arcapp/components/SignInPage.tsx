@@ -9,7 +9,7 @@ type Props = {
 }
 
 /**
- * Replaces the old dismissible SignInModal — ArcApp itself now renders NOTHING else (no sidebar,
+ * Replaces the old dismissible SignInModal — ArcSite itself now renders NOTHING else (no sidebar,
  * no data, no routes) until a real, authorized session exists, so a "close and browse anyway"
  * option doesn't make sense anymore. AppShell.tsx shows this in place of the whole app shell
  * whenever `!user`, which covers three cases: nobody's ever signed in yet, a sign-in attempt is
@@ -76,7 +76,7 @@ export default function SignInPage({ loading, authError, onGoogle, onEmail, onCl
 
           <h3 style={{ marginTop: 22 }}>Sign in to continue</h3>
           <p className="q-hint" style={{ marginTop: 0 }}>
-            Only pre-authorized emails can access ArcApp — contact an administrator to be added.
+            Only pre-authorized emails can access ArcSite — contact an administrator to be added.
           </p>
 
           {loading ? (

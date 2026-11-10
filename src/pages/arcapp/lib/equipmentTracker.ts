@@ -1,7 +1,7 @@
 /**
  * Pure, DOM-free helpers for the Equipment Status Tracker grid — ported from LaunchPad's
  * equipment-tracker-view.js (a shadow-DOM custom element that builds these same values by string-
- * concatenating HTML and querying its own rendered DOM). Since ArcApp renders the grid as React
+ * concatenating HTML and querying its own rendered DOM). Since ArcSite renders the grid as React
  * elements instead, every function here just takes/returns plain data so EquipmentTrackerPanel and
  * EquipmentTrackerPdfModal can both consume it without touching the DOM.
  */

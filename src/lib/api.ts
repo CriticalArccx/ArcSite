@@ -61,8 +61,8 @@ function unwrap<T>(res: { data: T | null; error: { message: string } | null }): 
 // checkEditor (mirrored backend/rno04/checkEditor.ts, checked email against
 // `${CXALLOY_TABLE_PREFIX}authorized_editors` — LaunchPad's shared edit-rights table) was removed
 // 2026-09-24: canEdit/isAdmin now come entirely from arcapp_authorized_users (see
-// src/lib/useCurrentUser.ts and AppShell.tsx), ArcApp's own table, by explicit request to keep
-// ArcApp's permission model independent of LaunchPad's.
+// src/lib/useCurrentUser.ts and AppShell.tsx), ArcSite's own table, by explicit request to keep
+// ArcSite's permission model independent of LaunchPad's.
 
 // ---------------------------------------------------------------------------
 // dropdown options — mirrors getActivityOptions / getAssetOptions / getResultOptions
@@ -206,11 +206,11 @@ async function getCxAlloyScriptUrl(): Promise<string> {
 
 async function fetchCxAlloySheet(action: string, params: Record<string, string> = {}): Promise<Array<Record<string, string>>> {
   // Guards Checklists/Issues/CxAlloy Settings/People against a project whose Apps Script hasn't
-  // had the ArcApp-specific actions added yet — Asset Attributes is gated separately
+  // had the ArcSite-specific actions added yet — Asset Attributes is gated separately
   // (getAssetAttributesScriptUrl below), since its actions are pre-existing LaunchPad ones, not an
-  // ArcApp addition to this same script.
+  // ArcSite addition to this same script.
   if (!hasCapability('cxAlloyActions')) {
-    throw new Error(`This project's Apps Script doesn't have the ArcApp actions (getChecklists/getIssues/etc.) added yet.`)
+    throw new Error(`This project's Apps Script doesn't have the ArcSite actions (getChecklists/getIssues/etc.) added yet.`)
   }
   const scriptUrl = await getCxAlloyScriptUrl()
   const url = new URL(scriptUrl)
@@ -412,7 +412,7 @@ export function useGetOpenIssues() {
 
 // ---------------------------------------------------------------------------
 // Checklist/Issue To-Do — who's responsible for chasing down a specific open checklist/issue.
-// Checklists/Issues themselves are read-only Sheet data (see above), so this is ArcApp's own
+// Checklists/Issues themselves are read-only Sheet data (see above), so this is ArcSite's own
 // table, keyed by the CxAlloy id, following arcapp_tasks' "at most one of team or person,
 // enforced app-side" assignment convention (todoAssignmentLabel() in utils.ts works on this
 // shape unchanged since the field names match Todo's).
@@ -484,15 +484,15 @@ export function useSaveItemAssignments() {
 // Asset Attributes — nameplate/spec data per asset (Manufacturer, Model, Serial, voltage, etc.),
 // grouped by category via a "Group: Attribute Name" key convention (ungrouped keys fall under
 // "General"). This is LaunchPad's own long-running feature, not something new added for
-// ArcApp — `getCxAlloyScriptUrl()` isn't actually CxAlloy-specific, it's just "the STY4 project's
+// ArcSite — `getCxAlloyScriptUrl()` isn't actually CxAlloy-specific, it's just "the STY4 project's
 // shared Apps Script" (stored in launchpad_projects, shared with LaunchPad), and
 // getEquipmentAttributes/saveAttributes already exist there because LaunchPad's Asset Attributes
-// page already calls them — this just gives ArcApp its own window into the same data. QR/photo-OCR
+// page already calls them — this just gives ArcSite its own window into the same data. QR/photo-OCR
 // scanning (LaunchPad has both) is intentionally not ported here — deferred to a follow-up.
 //
 // Gated by its own per-project Settings toggle, `assetAttributesEnabled` (added 2026-09-25) —
 // deliberately NOT tied to the `cxAlloyActions` capability Checklists/Issues use, since these
-// actions are pre-existing LaunchPad ones (not an ArcApp addition to the script) and can genuinely
+// actions are pre-existing LaunchPad ones (not an ArcSite addition to the script) and can genuinely
 // work on a project even where Checklists/Issues can't yet, or vice versa.
 // ---------------------------------------------------------------------------
 
@@ -590,7 +590,7 @@ export async function ocrAssetImage(params: {
 }
 
 // ---------------------------------------------------------------------------
-// Equipment Status Tracker — ArcApp's view of LaunchPad's own L2/L3/L4 phase-tracking grid.
+// Equipment Status Tracker — ArcSite's view of LaunchPad's own L2/L3/L4 phase-tracking grid.
 // The grid itself still doesn't go through Apps Script: LaunchPad periodically syncs the
 // underlying Google Sheet into `launchpad_equipment_tracker_data` (a GitHub Action, not this app),
 // and both apps just read that snapshot. System Config (phase toggles/headers, status-color lists)
@@ -779,7 +779,7 @@ export function useSaveEquipmentTrackerSettings() {
 // Joint Pack Photos — read from the "Joint Pack Photo - STY4A" Google Sheet (tabs: "Joint Packs",
 // "Settings") via its own Apps Script web app — a separate spreadsheet from CxAlloy's, so it has
 // its own script and its own URL, stored in arcapp_settings (not launchpad_projects — that row's
-// google_script_url is CxAlloy's and shared with LaunchPad; this one is ArcApp-only). Photos
+// google_script_url is CxAlloy's and shared with LaunchPad; this one is ArcSite-only). Photos
 // themselves upload straight to Drive from that same script (DriveApp, running as the script's
 // owner) into whatever folder ID is set on the Settings page, so no separate Drive connection is
 // needed — see JointPackPhotoScript.gs (given to the user to deploy; not committed to this repo,
@@ -886,15 +886,15 @@ export function useLogJointPackPhotos() {
 // migration run for them.
 //
 // Unlike everything else that reads from a Sheet, this one writes BACK to it: toggling a
-// checkbox or editing Comments in ArcApp calls updateNetaField, which sets that exact cell in the
-// live sheet the field crew already works from, so ArcApp never becomes a second, drifting copy
+// checkbox or editing Comments in ArcSite calls updateNetaField, which sets that exact cell in the
+// live sheet the field crew already works from, so ArcSite never becomes a second, drifting copy
 // of the data. Row hierarchy (Zone > Area > Asset Category) comes from special marker rows the
 // sheet uses in place of native row grouping (e.g. "ZONE HEADER: ZONE 1", "------ AREA: EY09
 // ------", "[ ASSET CATEGORY: ATX-A ]") — the script parses these while walking the sheet and
 // stamps every data row with the nearest one above it, so this file never needs to know that
 // convention itself. Gated by `netaTrackerEnabled` (AppSettings, below) rather than a
 // project.ts capability — an admin flips this on per-project from Settings once that project's
-// own NETA Sheet/script is ready, no ArcApp code change/redeploy needed.
+// own NETA Sheet/script is ready, no ArcSite code change/redeploy needed.
 // ---------------------------------------------------------------------------
 
 async function getNetaScriptUrl(): Promise<string> {
@@ -1223,7 +1223,7 @@ export type AppSettings = {
   netaTrackerScriptUrl: string
   /** Per-project on/off switch for Asset Attributes (page, nav item) — added 2026-09-25. Separate
    * from `cxAlloyActions` on purpose: getEquipmentAttributes/saveAttributes/saveImageOnly/ocrImage
-   * are pre-existing LaunchPad actions (not an ArcApp addition to the script), so this can be
+   * are pre-existing LaunchPad actions (not an ArcSite addition to the script), so this can be
    * enabled independently of whether Checklists/Issues are. Off by default for any project until
    * set — including STY4, seeded on so its existing behavior doesn't change. */
   assetAttributesEnabled: boolean
@@ -1514,7 +1514,7 @@ async function notifyGoogleChat(text: string): Promise<void> {
 async function sendChatTestMessage(): Promise<{ ok: true }> {
   const who = (await getCurrentUserEmail()) || 'an admin'
   const { error } = await supabase.functions.invoke('chat-notify', {
-    body: { projectKey: CURRENT_PROJECT, text: `👋 Test message from ArcApp, sent by ${who}.` },
+    body: { projectKey: CURRENT_PROJECT, text: `👋 Test message from ArcSite, sent by ${who}.` },
   })
   if (error) throw new Error(error.message || 'Google Chat rejected the test message.')
   return { ok: true }
@@ -1962,7 +1962,7 @@ export function useLogTamperSeals() {
 // submitBreakRequest) flips a seal to "Break Requested (Pending Approval)"
 // and best-effort logs a <prefix>BreakRequests row, but nothing in LaunchPad
 // itself ever reads the ccm_decision field back — there's no CCM approval UI
-// there at all. This is that missing half, on the ArcApp side: list pending
+// there at all. This is that missing half, on the ArcSite side: list pending
 // seals and let a CCM approve/deny them, which also resolves the matching
 // BreakRequests row (when one exists) so LaunchPad's own data stays correct.
 // ---------------------------------------------------------------------------
@@ -2523,9 +2523,9 @@ export function useDeleteTask() {
 }
 
 // ---------------------------------------------------------------------------
-// authorized users — who may sign in to ArcApp at all, and whether they're an admin or editor
+// authorized users — who may sign in to ArcSite at all, and whether they're an admin or editor
 // (arcapp_authorized_users). As of 2026-09-24 this table is the entire access-control model for
-// ArcApp: no `role` here means no access to the site at all (see the `!user` gate in AppShell.tsx)
+// ArcSite: no `role` here means no access to the site at all (see the `!user` gate in AppShell.tsx)
 // — deliberately its own table, never STY4authorized_editors (LaunchPad's shared edit-rights
 // table, with its own separate is_admin/role columns for a different purpose). The actual sign-in
 // gate (checking a freshly signed-in email against this table and signing back out if absent)
@@ -2539,7 +2539,7 @@ export type UserRole = 'admin' | 'editor'
  * default, and still what a freshly bulk-added person gets. A non-null array restricts that
  * person's access (both the Topbar project switcher and, server-side, every project_key-scoped
  * table's RLS write policy — see arcapp_user_allowed_project() in supabase/policies.sql) to just
- * those projects. Added 2026-11-02: before this, any authorized ArcApp user (admin or editor)
+ * those projects. Added 2026-11-02: before this, any authorized ArcSite user (admin or editor)
  * could switch into and write any project's data, regardless of which site they actually worked
  * on — see useCurrentUser.ts and Topbar.tsx for the client-side half of this gate. */
 export type AuthorizedUser = { id: string; email: string; name: string; role: UserRole; allowedProjects: ProjectKey[] | null }

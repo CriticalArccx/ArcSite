@@ -1,4 +1,4 @@
-// chat-bot — inbound Google Chat → ArcApp interactive bot.
+// chat-bot — inbound Google Chat → ArcSite interactive bot.
 //
 // This is the HTTP endpoint you paste into the Chat app's "Interactivity" config in Google Cloud
 // Console (APIs & Services → Google Chat API → Configuration). Google Chat POSTs an event here
@@ -51,7 +51,7 @@ Deno.serve(async (req) => {
   if (!expected || url.searchParams.get('token') !== expected) return plain('Unauthorized', 401)
 
   const projectKey = (url.searchParams.get('project') || Deno.env.get('ARCAPP_CHAT_DEFAULT_PROJECT') || '').trim()
-  if (!projectKey) return chatJson('ArcApp bot: no project configured for this endpoint — add ?project=<KEY> to its URL.')
+  if (!projectKey) return chatJson('ArcSite bot: no project configured for this endpoint — add ?project=<KEY> to its URL.')
 
   let event: ChatEvent
   try {
@@ -61,7 +61,7 @@ Deno.serve(async (req) => {
   }
 
   if (event.type === 'ADDED_TO_SPACE') {
-    return chatJson(`Hi! I'm the ArcApp bot for ${projectKey}. Try "/status", "/todo <text>", or "/lesson <text>".`)
+    return chatJson(`Hi! I'm the ArcSite bot for ${projectKey}. Try "/status", "/todo <text>", or "/lesson <text>".`)
   }
   if (event.type !== 'MESSAGE') return chatJson('')
 

@@ -41,7 +41,7 @@ export default function CxAlloyStatusPicker({ label, hint, column, value, canEdi
     return (
       <div style={{ marginBottom: 22, maxWidth: 560 }}>
         <label style={{ display: 'block', marginBottom: 8 }}>{label}</label>
-        <div className="q-hint">Not available — this project's Apps Script doesn't have the ArcApp getCxAlloySettings action added yet.</div>
+        <div className="q-hint">Not available — this project's Apps Script doesn't have the ArcSite getCxAlloySettings action added yet.</div>
       </div>
     )
   }

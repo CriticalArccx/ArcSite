@@ -49,7 +49,7 @@ function parseBulkLines(text: string, defaultRole: UserRole): { parsed: ParsedLi
 }
 
 /**
- * Manages arcapp_authorized_users — ArcApp's entire access-control list: who may sign in at all,
+ * Manages arcapp_authorized_users — ArcSite's entire access-control list: who may sign in at all,
  * AND whether they're an admin (can change Settings) or an editor (can't). `canEdit` here is
  * actually `isAdmin` from the caller (SettingsPanel.tsx) — managing this list is itself an
  * admin-only action, same reasoning as why an editor can't grant themselves adminship. Anyone not
@@ -177,7 +177,7 @@ export default function AuthorizedUsersManager({ canEdit }: Props) {
     <div style={{ marginTop: 26 }}>
       <p className="wf-subtitle">Authorized Users</p>
       <div className="q-hint" style={{ marginTop: 0, marginBottom: 12 }}>
-        Only these emails can sign in to ArcApp at all (Google or magic link) — this list, each
+        Only these emails can sign in to ArcSite at all (Google or magic link) — this list, each
         person's role, and which projects they can reach is the entire access-control model for the
         site now. <b style={{ color: 'var(--text)' }}>Admin</b> can change Settings (including this list); <b style={{ color: 'var(--text)' }}>Editor</b> can
         do everything else but not that. <b style={{ color: 'var(--text)' }}>Projects</b> defaults to All — narrow it to

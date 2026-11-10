@@ -1,4 +1,4 @@
-/* Date + formatting helpers ported from the original ArcApp dashboard. */
+/* Date + formatting helpers ported from the original ArcSite dashboard. */
 
 import type { Team, Todo } from './types'
 

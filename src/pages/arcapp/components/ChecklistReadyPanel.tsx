@@ -42,7 +42,7 @@ export default function ChecklistReadyPanel() {
       <CapabilityNotice
         feature="Checklists"
         id="checklists"
-        reason="This project's Apps Script doesn't have the ArcApp getChecklists action added yet."
+        reason="This project's Apps Script doesn't have the ArcSite getChecklists action added yet."
       />
     )
   }

@@ -48,7 +48,7 @@ export default function IssuesReviewPanel() {
 
   if (!available) {
     return (
-      <CapabilityNotice feature="Issues" id="issues" reason="This project's Apps Script doesn't have the ArcApp getIssues action added yet." />
+      <CapabilityNotice feature="Issues" id="issues" reason="This project's Apps Script doesn't have the ArcSite getIssues action added yet." />
     )
   }
 

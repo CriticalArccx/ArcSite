@@ -13,7 +13,7 @@ export default class ErrorBoundary extends Component<Props, State> {
 
   componentDidCatch(error: Error, info: { componentStack: string }) {
     // eslint-disable-next-line no-console
-    console.error('ArcApp crashed:', error, info.componentStack)
+    console.error('ArcSite crashed:', error, info.componentStack)
   }
 
   render() {
