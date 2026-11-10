@@ -345,3 +345,154 @@ export function groupedIssuesForPdf(row: EquipmentTrackerRow, maxCount: number, 
   }
   return items.length ? items.join(', ') : '-'
 }
+
+// ---------------------------------------------------------------------------
+// Status board (ARC-324): one card per asset, grouped by the commissioning phase it's currently
+// in. Like the rest of this file, it doesn't evaluate the Phase Rules (the Sheet does that). It
+// reads the Overall Status the rules already produced and checks it against this project's own
+// System Config status lists, so no status names are hard-coded here.
+// ---------------------------------------------------------------------------
+
+export type PhaseLevel = 'L2' | 'L3' | 'L4'
+export type BoardGroup = PhaseLevel | 'Complete'
+
+export type CardItem = { id: string; status: string; link: string; style: CellStyle }
+
+export type PhaseSummary = {
+  level: PhaseLevel
+  status: string
+  style: CellStyle
+  /** false when the phase doesn't apply to this asset (blank, N/A, "No CL", "No L4", …). */
+  applicable: boolean
+  complete: boolean
+  gates: CardItem[]
+  openSupport: CardItem[]
+  totalSupport: number
+}
+
+export type AssetCard = {
+  row: EquipmentTrackerRow
+  asset: string
+  area: string
+  link: string
+  group: BoardGroup
+  phases: PhaseSummary[]
+  openGatingIssues: CardItem[]
+  openNonGatingIssues: CardItem[]
+  totalIssues: number
+}
+
+const NOT_APPLICABLE = /^(n\/a|-|no cl|no l2|no l3|no l4|not applicable)$/
+
+function parseItem(val: string, link: string | undefined, type: CellType, config: EquipmentTrackerConfig, phaseRules: EqPhaseRule[]): CardItem {
+  const raw = String(val).trim()
+  const match = raw.match(/(.+?)\s*\((.+)\)/)
+  const status = match ? match[2].trim() : ''
+  return {
+    id: match ? match[1].trim() : raw,
+    status,
+    link: String(link || '').trim(),
+    style: status ? getDynamicStyle(config, phaseRules, status, type, false) : EMPTY_STYLE,
+  }
+}
+
+/** Whether a phase's Overall Status counts as finished, checked against this project's own
+ * Cx-Complete and Closed lists (Tests Closed for L4). An exact match on an Open status always
+ * means not finished, so a status like "Not Closed" can't be read as complete. */
+export function isPhaseStatusComplete(level: PhaseLevel, status: string, config: EquipmentTrackerConfig): boolean {
+  const s = norm(status)
+  if (!s) return false
+  const openArr = level === 'L4' ? config.testOpenStatuses || [] : config.openStatuses || []
+  if (openArr.some((o) => o.name && norm(o.name) === s)) return false
+  const closedArr = level === 'L4' ? config.testClosedStatuses || [] : config.closedStatuses || []
+  if (isStatusMatch(status, config.cxCompleteStatuses) || isStatusMatch(status, closedArr)) return true
+  return /\bcomplete[d]?\b/.test(s) && !/\bnot\b/.test(s)
+}
+
+/** Builds one board card per row. `levels` is the phases this project shows (System Config can
+ * hide one entirely); a hidden phase is left out of both the card and the grouping. */
+export function buildAssetCards(
+  rows: EquipmentTrackerRow[],
+  maxCols: MaxCols,
+  levels: PhaseLevel[],
+  config: EquipmentTrackerConfig,
+  phaseRules: EqPhaseRule[],
+): AssetCard[] {
+  const issueOpenArr = config.issueOpenStatuses || []
+  const issueClosedArr = config.issueClosedStatuses || []
+  const gatingArr = config.gatingIssues || []
+
+  return rows.map((row) => {
+    const phases: PhaseSummary[] = levels.map((level) => {
+      const key = level.toLowerCase() as 'l2' | 'l3' | 'l4'
+      const type: CellType = level === 'L4' ? 'test' : 'checklist'
+      const status = String(row[`${level} Overall Status`] ?? '').trim()
+      const applicable = !isBlank(status) && !NOT_APPLICABLE.test(norm(status))
+
+      const gates: CardItem[] = []
+      for (let i = 1; i <= maxCols[`${key}Gate` as 'l2Gate' | 'l3Gate' | 'l4Gate']; i++) {
+        const val = row[`${level} Gate CL ${i}`]
+        if (val && !isBlank(val)) gates.push(parseItem(val, row[`${level} Gate CL ${i}_Link`], type, config, phaseRules))
+      }
+
+      let totalSupport = 0
+      for (let i = 1; i <= maxCols[key]; i++) {
+        const val = row[`${level} Support CL ${i}`]
+        if (val && !isBlank(val) && !norm(val).includes('no cl')) totalSupport++
+      }
+      const openIds = new Set(combineOpenSupportCLs(row, level, maxCols[key], config).items.map((it) => it.id))
+      const openSupport: CardItem[] = []
+      for (let i = 1; i <= maxCols[key]; i++) {
+        const val = row[`${level} Support CL ${i}`]
+        if (!val || isBlank(val)) continue
+        const item = parseItem(val, row[`${level} Support CL ${i}_Link`], type, config, phaseRules)
+        if (openIds.has(item.id)) openSupport.push(item)
+      }
+
+      return {
+        level,
+        status: status || 'N/A',
+        style: getDynamicStyle(config, phaseRules, status, type, true),
+        applicable,
+        complete: applicable && isPhaseStatusComplete(level, status, config),
+        gates,
+        openSupport,
+        totalSupport,
+      }
+    })
+
+    const openGatingIssues: CardItem[] = []
+    const openNonGatingIssues: CardItem[] = []
+    let totalIssues = 0
+    for (let i = 1; i <= maxCols.iss; i++) {
+      const val = row[`Issue ${i}`]
+      if (!val || isBlank(val)) continue
+      totalIssues++
+      const item = parseItem(val, row[`Issue ${i}_Link`], 'issue', config, phaseRules)
+      if (!item.status) continue
+      const isOpen = isStatusMatch(item.status, issueOpenArr) || !isStatusMatch(item.status, issueClosedArr)
+      if (!isOpen) continue
+      if (isStatusMatch(item.status, gatingArr)) openGatingIssues.push(item)
+      else openNonGatingIssues.push(item)
+    }
+
+    // The asset sits in the first phase that applies and isn't finished. With every applicable
+    // phase finished it's Complete; with none applying yet (nothing started) it waits in the
+    // first phase shown.
+    const current = phases.find((p) => p.applicable && !p.complete)
+    const anyApplicable = phases.some((p) => p.applicable)
+    const group: BoardGroup = current ? current.level : anyApplicable ? 'Complete' : (levels[0] ?? 'Complete')
+
+    return {
+      row,
+      asset: String(row['Asset'] ?? '').trim(),
+      area: String(row['Area'] ?? '').trim(),
+      link: String(row['Asset_Link'] ?? '').trim(),
+      group,
+      phases,
+      openGatingIssues,
+      openNonGatingIssues,
+      totalIssues,
+    }
+  })
+}
