@@ -481,8 +481,8 @@ editable grid → "Confirm & Save" flow as always, writing to the same `STY4Asse
     requestor's name/company/email/reason once and every seal in that submission underneath
     (`getBreakRequests` in `src/lib/api.ts` does the asset-name + seal-number matching). Any
     signed-in authorized user (`canEdit`, editor or admin) gets an **Approve**/**Deny** toggle per
-    seal — a batch of 6 can be any mix, e.g. 4 approved and 2 denied — then **Submit N decisions**
-    applies just the seals that were touched (`useDecideBreakRequests`); approving a seal sets it
+    seal — a batch of 6 can be any mix, e.g. 4 approved and 2 denied — then **Submit decisions**
+    applies them (`useDecideBreakRequests`); approving a seal sets it
     to `Break Approved by CCM` (continuing LaunchPad's existing workflow), denying reverts it to
     `Intact` — matching the progression already shown in LaunchPad's own Tamper Seal log settings
     (accept moves forward a stage, deny sends it back to Intact rather than a dead-end status). The
@@ -500,6 +500,26 @@ editable grid → "Confirm & Save" flow as always, writing to the same `STY4Asse
   - The live `launchpad_tamperseal_config` workflow (`project_key='STY4'`) was updated to add a
     `break_requested → intact` transition (`t2b`), since the deny path didn't exist in the
     workflow graph at all before this.
+  - **Review flow (ARC-323, 2026-11-10)** — **Submit decisions** stays disabled until every seal
+    in the batch is set to Approve or Deny (the hint shows "N of M done"), so a batch is always
+    decided in one go. Denying a seal opens a short note field for why, and each card has a
+    **General notes** box. Both are saved to `STY4BreakRequests.decision_notes` (general notes,
+    then one `Seal #… denied: …` line per denial note; a later round appends instead of
+    overwriting), so no schema change was needed.
+  - **Decision email** — after the decisions save, the requestor is emailed the outcome: overall
+    decision, each seal Approved/Denied, reviewer, and the notes. It goes through the
+    `seal-decision-email` Edge Function (`sendBreakDecisionEmail` in `src/lib/api.ts`), which
+    builds the email server-side from the `BreakRequests` row and the seals' current statuses and
+    always sends to that row's `requestor_email`, so the browser can't pick the recipient or the
+    content. Reply-To is the reviewer. Batches with no request row (the legacy orphans) or no
+    requestor email aren't emailed. A failed or unconfigured email never undoes the decisions;
+    the panel says "Saved" and shows why the email wasn't sent. Setup, once per Supabase project:
+    ```
+    supabase functions deploy seal-decision-email
+    supabase secrets set RESEND_API_KEY=re_... SEAL_EMAIL_FROM="ArcSite <arcsite@your-verified-domain>"
+    ```
+    `RESEND_API_KEY` comes from [Resend](https://resend.com), and the `SEAL_EMAIL_FROM` domain
+    has to be verified there.
 
 ## Submittals — one record per document, applied to many assets
 

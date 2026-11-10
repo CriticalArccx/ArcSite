@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useOutletContext } from 'react-router-dom'
 import { Check, Plus, RefreshCw, X } from 'lucide-react'
-import { useGetAssetPlaceOptions, useGetBreakRequests, useGetTamperSeals, useLogTamperSeals, useDecideBreakRequests } from '../../../lib/api'
+import { sendBreakDecisionEmail, useGetAssetPlaceOptions, useGetBreakRequests, useGetTamperSeals, useLogTamperSeals, useDecideBreakRequests } from '../../../lib/api'
 import type { BreakRequestGroup, SealInput } from '../../../lib/api'
 import { fmtDate, localIsoDate } from '../utils'
 import { hasCapability } from '../../../lib/project'
@@ -30,10 +30,14 @@ function sealStatusClass(status: string): string {
   return 'muted'
 }
 
-/** One batch submission's card — shows the request-level info once (requestor/reason/date, or
- * "no request details" for the legacy orphan rows that predate the BreakRequests table existing),
- * then every seal in that submission with its own Approve/Deny toggle, so a CCM can approve some
- * and deny the rest of the same batch before submitting the decisions for whichever got touched. */
+/** One batch submission's card: the request-level info once (requestor/reason/date, or "no
+ * request details" for the legacy orphan rows that predate the BreakRequests table), then every
+ * seal in that submission with its own Approve/Deny toggle.
+ *
+ * ARC-323: Submit stays disabled until every seal in the batch has a decision, a denied seal gets
+ * an optional reason, and there's a general notes box for the whole review. Both kinds of note are
+ * saved to the request's decision_notes, and once the decisions are saved the requestor is
+ * emailed the outcome (sendBreakDecisionEmail). */
 function BreakRequestGroupCard({
   group,
   canDecide,
@@ -41,16 +45,27 @@ function BreakRequestGroupCard({
 }: {
   group: BreakRequestGroup
   canDecide: boolean
-  onDecided: () => void
+  onDecided: (notice: DecisionNotice) => void
 }) {
   const decideFn = useDecideBreakRequests()
   const [choices, setChoices] = useState<Record<number, 'approve' | 'deny'>>({})
+  const [denyNotes, setDenyNotes] = useState<Record<number, string>>({})
   const [notes, setNotes] = useState('')
   const [confirming, setConfirming] = useState(false)
+  const [emailing, setEmailing] = useState(false)
 
-  const chosenCount = Object.keys(choices).length
+  const total = group.seals.length
+  const chosenCount = group.seals.filter((s) => choices[s.assetId]).length
+  const allChosen = total > 0 && chosenCount === total
+  const approveCount = group.seals.filter((s) => choices[s.assetId] === 'approve').length
+  const denyCount = chosenCount - approveCount
+  const busy = decideFn.loading || emailing
+  // Orphan batches have no BreakRequests row, so there's no requestor to email.
+  const willEmail = group.requestId != null && Boolean(group.requestor_email)
+  const notesId = `ts-req-notes-${group.requestId ?? group.asset_name}`
 
   function setChoice(assetId: number, choice: 'approve' | 'deny') {
+    setConfirming(false)
     setChoices((prev) => {
       const next = { ...prev }
       if (next[assetId] === choice) delete next[assetId]
@@ -60,13 +75,26 @@ function BreakRequestGroupCard({
   }
 
   async function submitDecisions() {
-    const decisions = Object.entries(choices).map(([assetId, choice]) => ({ assetId: Number(assetId), approve: choice === 'approve' }))
-    if (decisions.length === 0) return
-    await decideFn.trigger({ requestId: group.requestId, decisions, notes }).result
-    setChoices({})
-    setNotes('')
-    setConfirming(false)
-    onDecided()
+    if (!allChosen) return
+    const decisions = group.seals.map((s) => ({
+      assetId: s.assetId,
+      approve: choices[s.assetId] === 'approve',
+      sealLabel: s.sub_area ? `${s.seal_number} / ${s.sub_area}` : s.seal_number,
+      note: choices[s.assetId] === 'deny' ? denyNotes[s.assetId] || '' : '',
+    }))
+    try {
+      await decideFn.trigger({ requestId: group.requestId, decisions, notes }).result
+    } catch {
+      return // decideFn.error is shown on the card
+    }
+    const summary = `${group.asset_name}: ${approveCount} approved, ${denyCount} denied.`
+    let email: DecisionNotice['email'] = null
+    if (willEmail && group.requestId != null) {
+      setEmailing(true)
+      email = await sendBreakDecisionEmail(group.requestId)
+      setEmailing(false)
+    }
+    onDecided({ summary, email })
   }
 
   const hasRequestDetails = group.requestor_name || group.requestor_email || group.requestor_company || group.reason || group.requested_at
@@ -100,60 +128,93 @@ function BreakRequestGroupCard({
         {group.seals.map((s) => {
           const choice = choices[s.assetId]
           return (
-            <div key={s.assetId} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap' }}>
-              <span style={{ fontFamily: 'var(--font-mono)', fontSize: 13, color: 'var(--text)' }}>
-                Seal #{s.seal_number}
-                {s.sub_area ? <span style={{ color: 'var(--text-muted)' }}> / {s.sub_area}</span> : null}
-              </span>
-              {canDecide && (
-                <div style={{ display: 'flex', gap: 6 }}>
-                  <button
-                    type="button"
-                    className={`ts-seal-btn${choice === 'approve' ? ' active-approve' : ''}`}
-                    style={{ display: 'flex', alignItems: 'center', gap: 4 }}
-                    onClick={() => setChoice(s.assetId, 'approve')}
-                  >
-                    <Check style={{ width: 12, height: 12 }} /> Approve
-                  </button>
-                  <button
-                    type="button"
-                    className={`ts-seal-btn${choice === 'deny' ? ' active-deny' : ''}`}
-                    style={{ display: 'flex', alignItems: 'center', gap: 4 }}
-                    onClick={() => setChoice(s.assetId, 'deny')}
-                  >
-                    <X style={{ width: 12, height: 12 }} /> Deny
-                  </button>
-                </div>
+            <div key={s.assetId} className="ts-req-seal">
+              <div className="ts-req-seal-row">
+                <span style={{ fontFamily: 'var(--font-mono)', fontSize: 13, color: 'var(--text)' }}>
+                  Seal #{s.seal_number}
+                  {s.sub_area ? <span style={{ color: 'var(--text-muted)' }}> / {s.sub_area}</span> : null}
+                </span>
+                {canDecide && (
+                  <div style={{ display: 'flex', gap: 6 }}>
+                    <button
+                      type="button"
+                      className={`ts-seal-btn${choice === 'approve' ? ' active-approve' : ''}`}
+                      style={{ display: 'flex', alignItems: 'center', gap: 4 }}
+                      aria-pressed={choice === 'approve'}
+                      disabled={busy}
+                      onClick={() => setChoice(s.assetId, 'approve')}
+                    >
+                      <Check style={{ width: 12, height: 12 }} /> Approve
+                    </button>
+                    <button
+                      type="button"
+                      className={`ts-seal-btn${choice === 'deny' ? ' active-deny' : ''}`}
+                      style={{ display: 'flex', alignItems: 'center', gap: 4 }}
+                      aria-pressed={choice === 'deny'}
+                      disabled={busy}
+                      onClick={() => setChoice(s.assetId, 'deny')}
+                    >
+                      <X style={{ width: 12, height: 12 }} /> Deny
+                    </button>
+                  </div>
+                )}
+              </div>
+              {canDecide && choice === 'deny' && (
+                <input
+                  type="text"
+                  className="ts-req-note"
+                  placeholder="Why is this seal denied? (optional, sent to the requestor)"
+                  aria-label={`Denial note for seal ${s.seal_number}`}
+                  value={denyNotes[s.assetId] ?? ''}
+                  disabled={busy}
+                  onChange={(e) => setDenyNotes((prev) => ({ ...prev, [s.assetId]: e.target.value }))}
+                />
               )}
             </div>
           )
         })}
       </div>
 
-      {canDecide && chosenCount > 0 && (
-        <div style={{ marginTop: 10 }}>
-          {confirming ? (
-            <div className="wf-confirm" style={{ flexWrap: 'wrap' }}>
-              Apply {chosenCount} decision{chosenCount === 1 ? '' : 's'} to this batch?
-              <input
-                type="text"
-                placeholder="Notes (optional)"
-                value={notes}
-                onChange={(e) => setNotes(e.target.value)}
-                style={{ flex: '1 1 160px', minWidth: 140 }}
-              />
-              <button className="wf-btn" disabled={decideFn.loading} onClick={submitDecisions}>
-                {decideFn.loading ? '…' : 'Confirm'}
-              </button>
-              <button className="wf-btn" disabled={decideFn.loading} onClick={() => setConfirming(false)}>
-                Cancel
-              </button>
-            </div>
-          ) : (
-            <button type="button" className="wf-btn" onClick={() => setConfirming(true)}>
-              Submit {chosenCount} decision{chosenCount === 1 ? '' : 's'}
-            </button>
-          )}
+      {canDecide && (
+        <div style={{ marginTop: 12 }}>
+          <label className="ts-req-label" htmlFor={notesId}>
+            General notes
+          </label>
+          <textarea
+            id={notesId}
+            className="ts-req-note ts-req-notes"
+            placeholder="Notes for the whole review (optional, sent to the requestor)"
+            rows={2}
+            value={notes}
+            disabled={busy}
+            onChange={(e) => setNotes(e.target.value)}
+          />
+
+          <div style={{ marginTop: 10 }}>
+            {confirming && allChosen ? (
+              <div className="wf-confirm">
+                Approve {approveCount}, deny {denyCount}
+                {willEmail ? ` and email ${group.requestor_email}?` : '?'}
+                <button className="wf-btn" disabled={busy} onClick={submitDecisions}>
+                  {decideFn.loading ? 'Saving…' : emailing ? 'Emailing…' : 'Confirm'}
+                </button>
+                <button className="wf-btn" disabled={busy} onClick={() => setConfirming(false)}>
+                  Cancel
+                </button>
+              </div>
+            ) : (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+                <button type="button" className="wf-btn" disabled={!allChosen} onClick={() => setConfirming(true)}>
+                  Submit decisions
+                </button>
+                {!allChosen && (
+                  <span className="q-hint" style={{ marginTop: 0 }}>
+                    Choose Approve or Deny for every seal ({chosenCount} of {total} done).
+                  </span>
+                )}
+              </div>
+            )}
+          </div>
         </div>
       )}
       {decideFn.error && <div className="q-hint err" style={{ marginTop: 8 }}>{decideFn.error}</div>}
@@ -161,12 +222,17 @@ function BreakRequestGroupCard({
   )
 }
 
+/** What the last submitted review did, shown above the remaining requests (the decided card
+ * itself disappears once its seals are no longer pending). */
+type DecisionNotice = { summary: string; email: { sent: boolean; message: string } | null }
+
 /** The CCM approval step LaunchPad's field form starts but never finishes: it flips the selected
  * seals (a worker can request several in one submission) to "Break Requested (Pending Approval)"
  * and logs the request, but there's no approve/deny UI anywhere in LaunchPad itself. This groups
  * those pending seals back into their original batch submissions and lets a CCM decide them. */
 function BreakRequestsSection({ canDecide, onDecided }: { canDecide: boolean; onDecided: () => void }) {
   const breakFn = useGetBreakRequests()
+  const [notice, setNotice] = useState<DecisionNotice | null>(null)
 
   useEffect(() => {
     void breakFn.trigger()
@@ -177,23 +243,41 @@ function BreakRequestsSection({ canDecide, onDecided }: { canDecide: boolean; on
   const sealCount = groups.reduce((n, g) => n + g.seals.length, 0)
 
   if (breakFn.loading && !breakFn.data) return null
-  if (groups.length === 0) return null
+  if (groups.length === 0 && !notice) return null
 
-  function refresh() {
+  function refresh(n: DecisionNotice) {
+    setNotice(n)
     void breakFn.trigger()
     onDecided()
   }
 
   return (
     <div className="panel-body" style={{ borderBottom: '1px solid var(--border)' }}>
-      <div className="q-hint" style={{ marginBottom: 10, fontWeight: 600, color: 'var(--text)' }}>
-        Pending Break Requests ({groups.length} {groups.length === 1 ? 'batch' : 'batches'}, {sealCount} seal{sealCount === 1 ? '' : 's'})
-      </div>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-        {groups.map((g) => (
-          <BreakRequestGroupCard key={g.requestId ?? `orphan:${g.asset_name}`} group={g} canDecide={canDecide} onDecided={refresh} />
-        ))}
-      </div>
+      {notice && (
+        <div className="ts-req-notice" role="status">
+          <span className="q-hint ok" style={{ marginTop: 0 }}>Saved. {notice.summary}</span>
+          {notice.email && (
+            <span className={`q-hint ${notice.email.sent ? 'ok' : 'err'}`} style={{ marginTop: 0 }}>
+              {notice.email.sent ? notice.email.message : `Email not sent: ${notice.email.message}`}
+            </span>
+          )}
+          <button type="button" className="wf-btn" onClick={() => setNotice(null)}>
+            Dismiss
+          </button>
+        </div>
+      )}
+      {groups.length > 0 && (
+        <>
+          <div className="q-hint" style={{ marginBottom: 10, fontWeight: 600, color: 'var(--text)' }}>
+            Pending Break Requests ({groups.length} {groups.length === 1 ? 'batch' : 'batches'}, {sealCount} seal{sealCount === 1 ? '' : 's'})
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            {groups.map((g) => (
+              <BreakRequestGroupCard key={g.requestId ?? `orphan:${g.asset_name}`} group={g} canDecide={canDecide} onDecided={refresh} />
+            ))}
+          </div>
+        </>
+      )}
     </div>
   )
 }

@@ -2116,10 +2116,27 @@ export function useGetBreakRequests() {
   return useApiFn(getBreakRequests)
 }
 
-/** Decides some or all of a batch request's seals in one go — a CCM can approve a subset and deny
- * the rest of the same submission, so `decisions` only needs to cover the seals being acted on
- * this round, not the whole group. */
-async function decideBreakRequests(params: { requestId: number | null; decisions: Array<{ assetId: number; approve: boolean }>; notes?: string }): Promise<void> {
+/** One seal's decision. `sealLabel` and `note` only feed the saved review notes: a denial can
+ * carry a short reason (ARC-323) that ends up in decision_notes and the requestor's email. */
+export type BreakDecision = { assetId: number; approve: boolean; sealLabel?: string; note?: string }
+
+/** Turns this round's general notes and per-seal denial reasons into the text saved in
+ * BreakRequests.decision_notes. The email reads it back from there, so what the requestor is told
+ * is always what's on file. */
+function composeDecisionNotes(decisions: BreakDecision[], notes: string): string {
+  const lines: string[] = []
+  const general = notes.trim()
+  if (general) lines.push(`General notes: ${general}`)
+  for (const d of decisions) {
+    const note = (d.note || '').trim()
+    if (!d.approve && note) lines.push(`Seal #${d.sealLabel || d.assetId} denied: ${note}`)
+  }
+  return lines.join('\n')
+}
+
+/** Applies a CCM's decisions to a batch request. The UI sends one for every pending seal in the
+ * batch (ARC-323 only enables Submit once each has been chosen). */
+async function decideBreakRequests(params: { requestId: number | null; decisions: BreakDecision[]; notes?: string }): Promise<void> {
   if (!hasCapability('siteLogging')) throw new Error('Tamper Seal logging isn’t available for this project yet.')
   const decisions = params.decisions || []
   if (decisions.length === 0) return
@@ -2143,7 +2160,7 @@ async function decideBreakRequests(params: { requestId: number | null; decisions
   // seal in the submission has been decided, re-derive it from every seal's current status rather
   // than just this round's — covers acting on a batch across more than one visit, and a mix of
   // approve/deny landing on "Partially Approved" instead of a single pass/fail.
-  const reqRes = await supabase.from(`${CXALLOY_TABLE_PREFIX}BreakRequests`).select('asset_name, requested_seal_numbers').eq('id', params.requestId).single()
+  const reqRes = await supabase.from(`${CXALLOY_TABLE_PREFIX}BreakRequests`).select('asset_name, requested_seal_numbers, decision_notes').eq('id', params.requestId).single()
   if (reqRes.error || !reqRes.data) return
   const sealNumbers = (reqRes.data.requested_seal_numbers || '')
     .split(',')
@@ -2163,14 +2180,38 @@ async function decideBreakRequests(params: { requestId: number | null; decisions
       : statuses.every((s) => s === INTACT_STATUS)
         ? 'Denied'
         : 'Partially Approved'
+  // Seals left over from an earlier round keep that round's notes: append rather than overwrite.
+  const roundNotes = composeDecisionNotes(decisions, params.notes || '')
+  const decisionNotes = [reqRes.data.decision_notes || '', roundNotes].map((n: string) => n.trim()).filter(Boolean).join('\n')
   const updateRes = await supabase
     .from(`${CXALLOY_TABLE_PREFIX}BreakRequests`)
-    .update({ ccm_decision: aggregate, decided_by: decidedBy, decided_at: new Date().toISOString(), decision_notes: params.notes || '' })
+    .update({ ccm_decision: aggregate, decided_by: decidedBy, decided_at: new Date().toISOString(), decision_notes: decisionNotes })
     .eq('id', params.requestId)
   if (updateRes.error) throw new Error(updateRes.error.message)
 }
 export function useDecideBreakRequests() {
   return useApiFn(decideBreakRequests)
+}
+
+/** Emails the requestor the outcome of their break request (ARC-323) through the
+ * `seal-decision-email` Edge Function. The function builds the email itself from the
+ * BreakRequests row and the seals' current statuses, and always sends to the requestor_email on
+ * file, so the browser can't choose the recipient or the content. Never throws: the decisions are
+ * already saved by the time this runs, so a mail problem is reported, not treated as a failure. */
+export async function sendBreakDecisionEmail(requestId: number): Promise<{ sent: boolean; message: string }> {
+  try {
+    const { data, error } = await supabase.functions.invoke('seal-decision-email', { body: { projectKey: CURRENT_PROJECT, requestId } })
+    if (error) {
+      // FunctionsHttpError keeps the response; the function puts a readable reason in `error`.
+      const ctx = (error as { context?: Response }).context
+      const detail = ctx && typeof ctx.json === 'function' ? await ctx.json().catch(() => null) : null
+      return { sent: false, message: detail?.error || error.message || 'The email service returned an error.' }
+    }
+    if (data?.sent) return { sent: true, message: `Emailed the review to ${data.to}.` }
+    return { sent: false, message: data?.error || 'The email wasn’t sent.' }
+  } catch (e) {
+    return { sent: false, message: e instanceof Error ? e.message : 'The email wasn’t sent.' }
+  }
 }
 
 // ---------------------------------------------------------------------------
