@@ -513,13 +513,23 @@ editable grid → "Confirm & Save" flow as always, writing to the same `STY4Asse
     always sends to that row's `requestor_email`, so the browser can't pick the recipient or the
     content. Reply-To is the reviewer. Batches with no request row (the legacy orphans) or no
     requestor email aren't emailed. A failed or unconfigured email never undoes the decisions;
-    the panel says "Saved" and shows why the email wasn't sent. Setup, once per Supabase project:
-    ```
-    supabase functions deploy seal-decision-email
-    supabase secrets set RESEND_API_KEY=re_... SEAL_EMAIL_FROM="ArcSite <arcsite@your-verified-domain>"
-    ```
-    `RESEND_API_KEY` comes from [Resend](https://resend.com), and the `SEAL_EMAIL_FROM` domain
-    has to be verified there.
+    the panel says "Saved" and shows why the email wasn't sent.
+  - **Sender: arclab@criticalarccx.com.** The Edge Function hands the finished email to a small
+    Apps Script web app (`apps-script/arclab-mailer/Code.gs`) that's deployed by the arclab@
+    account, so Gmail sends it as arclab@. The script only sends when the request carries a shared
+    secret, and it refuses to run if it was deployed from any other account. Setup, once:
+    1. Signed in to Google as arclab@criticalarccx.com, create a project at script.google.com and
+       paste in `Code.gs`.
+    2. Project Settings → Script properties → add `MAILER_SECRET` with a long random value.
+    3. Deploy → New deployment → Web app, **Execute as: Me**, **Who has access: Anyone**, and
+       authorize the Gmail permission. Copy the `/exec` URL.
+    4. Deploy the function and set its secrets:
+       ```
+       supabase functions deploy seal-decision-email
+       supabase secrets set ARCLAB_MAILER_URL=<the /exec URL> ARCLAB_MAILER_SECRET=<same value as step 2>
+       ```
+    Gmail's Workspace limit is about 1,500 recipients a day for the account, far above what
+    break requests need.
 
 ## Submittals — one record per document, applied to many assets
 

@@ -11,10 +11,15 @@
 // with the service role, and it always goes to the requestor_email on that row, so this can't be
 // used to send arbitrary mail to arbitrary addresses.
 //
-// Sends through Resend (https://resend.com). Deploy: supabase functions deploy seal-decision-email
+// Sends from arclab@criticalarccx.com through Gmail, via the Apps Script web app in
+// apps-script/arclab-mailer/Code.gs. That script is deployed by the arclab@ account ("Execute as:
+// Me"), so GmailApp sends as arclab@, and it only sends when the request carries the shared secret.
+// The secret and the script URL live only here, as function secrets, never in the browser.
+//
+// Deploy: supabase functions deploy seal-decision-email
 // Secrets needed:
-//   RESEND_API_KEY   an API key from Resend
-//   SEAL_EMAIL_FROM  the sender, on a domain verified in Resend, e.g. "ArcSite <arcsite@example.com>"
+//   ARCLAB_MAILER_URL     the Apps Script web app URL (ends in /exec)
+//   ARCLAB_MAILER_SECRET  the same value as the script's MAILER_SECRET script property
 // Without them the function answers { sent: false, error } instead of failing, and the decisions
 // themselves are already saved by then.
 
@@ -73,10 +78,10 @@ Deno.serve(async (req) => {
   const { data: allowed, error: allowedErr } = await callerClient.rpc('arcapp_user_allowed_project', { p: projectKey })
   if (allowedErr || !allowed) return json({ error: 'Not authorized for this project.' }, 403)
 
-  const apiKey = Deno.env.get('RESEND_API_KEY') ?? ''
-  const from = Deno.env.get('SEAL_EMAIL_FROM') ?? ''
-  if (!apiKey || !from) {
-    return json({ sent: false, error: "Email isn't set up yet (the seal-decision-email function needs RESEND_API_KEY and SEAL_EMAIL_FROM)." })
+  const mailerUrl = Deno.env.get('ARCLAB_MAILER_URL') ?? ''
+  const mailerSecret = Deno.env.get('ARCLAB_MAILER_SECRET') ?? ''
+  if (!mailerUrl || !mailerSecret) {
+    return json({ sent: false, error: "Email isn't set up yet (the seal-decision-email function needs ARCLAB_MAILER_URL and ARCLAB_MAILER_SECRET)." })
   }
 
   const admin = createClient(supabaseUrl, serviceKey)
@@ -150,14 +155,24 @@ ${notes ? `<p><strong>Reviewer notes</strong><br>${esc(notes).replace(/\n/g, '<b
 <p>Only break the seals marked Approved. Denied seals stay intact.</p>
 </div>`
 
-  const mailRes = await fetch('https://api.resend.com/emails', {
-    method: 'POST',
-    headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
-    body: JSON.stringify({ from, to: [to], subject, text, html, ...(reviewer.includes('@') ? { reply_to: reviewer } : {}) }),
-  })
-  if (!mailRes.ok) {
-    const detail = await mailRes.text().catch(() => '')
-    return json({ sent: false, error: `The email service rejected the message (${mailRes.status}): ${detail.slice(0, 300)}` }, 502)
+  // Apps Script runs doPost on this request, then redirects to where its output is served; fetch
+  // follows that redirect, so the body read below is the script's JSON reply.
+  let reply: { ok?: boolean; error?: string } = {}
+  try {
+    const mailRes = await fetch(mailerUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify({ secret: mailerSecret, to, subject, text, html, replyTo: reviewer.includes('@') ? reviewer : '' }),
+    })
+    const raw = await mailRes.text()
+    try {
+      reply = JSON.parse(raw)
+    } catch {
+      return json({ sent: false, error: `The arclab@ mailer didn't answer as expected (${mailRes.status}): ${raw.slice(0, 200)}` }, 502)
+    }
+  } catch (e) {
+    return json({ sent: false, error: `Couldn't reach the arclab@ mailer: ${e instanceof Error ? e.message : String(e)}` }, 502)
   }
+  if (!reply.ok) return json({ sent: false, error: `The arclab@ mailer refused the message: ${reply.error || 'no reason given'}` }, 502)
   return json({ sent: true, to })
 })
