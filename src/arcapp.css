@@ -924,6 +924,19 @@ html, body, #root{ margin:0; padding:0; min-height:100%; background:#141718; }
 .arcapp .ts-seal-btn:hover{ color:var(--text); filter:brightness(1.15); }
 .arcapp .ts-seal-btn.active-approve{ color:var(--green-soft); background:var(--green-tint); border-color:var(--green-dim); }
 .arcapp .ts-seal-btn.active-deny{ color:var(--red); background:var(--red-tint); border-color:var(--red); }
+.arcapp .ts-seal-btn:disabled{ opacity:.55; cursor:default; filter:none; }
+/* ARC-323: break request review (denial notes, general notes, saved/email notice) */
+.arcapp .ts-req-seal{ display:flex; flex-direction:column; gap:6px; }
+.arcapp .ts-req-seal-row{ display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap; }
+.arcapp .ts-req-label{ display:block; font-family:var(--font-mono); font-size:11px; color:var(--text-muted); margin-bottom:4px; }
+.arcapp .ts-req-note{
+  width:100%; box-sizing:border-box; background:var(--bg); border:1px solid var(--border-strong);
+  border-radius:var(--radius-sm); color:var(--text); font-family:inherit; font-size:13px; padding:7px 10px;
+}
+.arcapp .ts-req-seal .ts-req-note{ border-color:var(--red); }
+.arcapp .ts-req-notes{ resize:vertical; min-height:52px; }
+.arcapp .ts-req-note::placeholder{ color:var(--text-faint); }
+.arcapp .ts-req-notice{ display:flex; align-items:center; gap:12px; flex-wrap:wrap; margin-bottom:12px; }
 
 .arcapp .jp-gallery-list{ display:flex; flex-direction:column; }
 .arcapp .jp-gallery-row{ display:flex; align-items:flex-start; gap:16px; padding:14px 0; border-bottom:1px solid var(--border); }
