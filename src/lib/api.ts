@@ -18,6 +18,7 @@
  */
 
 import { useApiFn } from './useApiFn'
+import { invalidateRequests, shareRequest } from './requestCache'
 import { supabase } from './supabaseClient'
 import { CURRENT_PROJECT, hasCapability, isProjectKey } from './project'
 import type { ProjectKey } from './project'
@@ -192,7 +193,11 @@ export function useGetCxAlloyLinkBase() {
  * baked in, since it's used by two independently-gated feature families (fetchCxAlloySheet's own
  * `cxAlloyActions` check below, and getAssetAttributesScriptUrl's `assetAttributesEnabled` check)
  * that shouldn't be coupled to each other's on/off state. */
-async function getCxAlloyScriptUrl(): Promise<string> {
+// Shared between callers (see requestCache.ts): every CxAlloy read used to look this up again.
+function getCxAlloyScriptUrl(): Promise<string> {
+  return shareRequest('cxalloy-script-url', 5 * 60_000, loadCxAlloyScriptUrl)
+}
+async function loadCxAlloyScriptUrl(): Promise<string> {
   const res = await supabase
     .from('launchpad_projects')
     .select('google_script_url')
@@ -219,11 +224,15 @@ async function fetchCxAlloySheet(action: string, params: Record<string, string> 
     if (v) url.searchParams.set(k, v)
   }
 
-  const res = await fetch(url.toString())
-  if (!res.ok) throw new Error(`CxAlloy data request failed (HTTP ${res.status})`)
-  const json = (await res.json()) as { status?: string; error?: string; data?: Array<Record<string, string>> }
-  if (json.status === 'error') throw new Error(json.error || 'CxAlloy data request failed')
-  return json.data ?? []
+  // These actions only read. Callers asking for the same action and filters within 15 s share one
+  // Apps Script call; the Dashboard alone used to make each of them twice (see requestCache.ts).
+  return shareRequest(`cxalloy:${url.toString()}`, 15_000, async () => {
+    const res = await fetch(url.toString())
+    if (!res.ok) throw new Error(`CxAlloy data request failed (HTTP ${res.status})`)
+    const json = (await res.json()) as { status?: string; error?: string; data?: Array<Record<string, string>> }
+    if (json.status === 'error') throw new Error(json.error || 'CxAlloy data request failed')
+    return json.data ?? []
+  })
 }
 
 // ---- CxAlloy Settings tab — the selectable status/type/priority vocabulary ----
@@ -822,7 +831,10 @@ export type JointPackData = {
    * whether or not they have any Joint Pack # rows yet. */
   knownAssets: string[]
 }
-async function getJointPackData(): Promise<JointPackData> {
+function getJointPackData(): Promise<JointPackData> {
+  return shareRequest('jointpack-data', 15_000, loadJointPackData)
+}
+async function loadJointPackData(): Promise<JointPackData> {
   const json = await fetchJointPackScript('getJointPackData')
   const rawRows = (json.rows as Array<Record<string, unknown>>) ?? []
   const rows: JointPackRow[] = rawRows.map((r) => ({
@@ -850,6 +862,13 @@ export type LogJointPackPhotosParams = {
   photos: Array<{ side: JointPackSide; dataUrl: string }>
 }
 async function logJointPackPhotos(params: LogJointPackPhotosParams): Promise<{ results: Array<{ side: string; url: string }> }> {
+  try {
+    return await sendJointPackPhotos(params)
+  } finally {
+    invalidateRequests('jointpack-data')
+  }
+}
+async function sendJointPackPhotos(params: LogJointPackPhotosParams): Promise<{ results: Array<{ side: string; url: string }> }> {
   const { jointPackPhotosFolder: folderId } = await getSettings()
   if (!folderId.trim()) throw new Error('Set a Google Drive destination folder in Settings before logging Joint Pack photos.')
   const scriptUrl = await getJointPackScriptUrl()
@@ -963,7 +982,10 @@ function netaBoolOrNA(v: unknown): boolean | 'N/A' {
   return typeof v === 'string' && v.trim().toUpperCase() === 'N/A' ? 'N/A' : netaBool(v)
 }
 
-async function getNetaTrackerData(): Promise<NetaTrackerData> {
+function getNetaTrackerData(): Promise<NetaTrackerData> {
+  return shareRequest('neta-data', 15_000, loadNetaTrackerData)
+}
+async function loadNetaTrackerData(): Promise<NetaTrackerData> {
   const scriptUrl = await getNetaScriptUrl()
   const url = new URL(scriptUrl)
   url.searchParams.set('action', 'getNetaData')
@@ -1028,6 +1050,13 @@ export type UpdateNetaFieldParams = {
   expectedDocumentName: string
 }
 async function updateNetaField(params: UpdateNetaFieldParams): Promise<{ success: boolean }> {
+  try {
+    return await writeNetaField(params)
+  } finally {
+    invalidateRequests('neta-data')
+  }
+}
+async function writeNetaField(params: UpdateNetaFieldParams): Promise<{ success: boolean }> {
   const scriptUrl = await getNetaScriptUrl()
   const res = await fetch(scriptUrl, {
     method: 'POST',
@@ -1368,7 +1397,11 @@ function parseDefaultAssignee(map: Map<string, string>, prefix: string): Default
     name: map.get(`${prefix}_name`) || null,
   }
 }
-async function getSettings(): Promise<AppSettings> {
+// Read by nearly every fetcher in this file, so it's shared for 60 s; saveSetting clears it.
+function getSettings(): Promise<AppSettings> {
+  return shareRequest('settings', 60_000, loadSettings)
+}
+async function loadSettings(): Promise<AppSettings> {
   const res = await supabase.from('arcapp_settings').select('setting_key, setting_value').eq('project_key', CURRENT_PROJECT)
   const rows = unwrap(res) as Array<{ setting_key: string; setting_value: string | null }>
   const map = new Map(rows.map((r) => [r.setting_key, r.setting_value ?? '']))
@@ -1468,6 +1501,7 @@ async function saveSetting(params: { key: string; value: string }): Promise<{ ke
       { project_key: CURRENT_PROJECT, setting_key: params.key, setting_value: params.value, updated_by: updatedBy, updated_at: new Date().toISOString() },
       { onConflict: 'project_key,setting_key' },
     )
+  invalidateRequests('settings')
   if (res.error) throw new Error(res.error.message)
   return { key: params.key, value: params.value }
 }

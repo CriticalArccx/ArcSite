@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useOutletContext } from 'react-router-dom'
-import JSZip from 'jszip'
 import { Plus, Pencil, Trash2, RefreshCw, Paperclip, ExternalLink, Download, AlertTriangle, ChevronDown, ChevronUp, Ban } from 'lucide-react'
 import {
   useGetAssetOptions,
@@ -259,6 +258,8 @@ export default function SubmittalsManager({ canEdit }: { canEdit: boolean }) {
     setExporting(true)
     setExportError('')
     try {
+      // Loaded on first use so the zip library isn't in every page load's bundle (ARC-321).
+      const { default: JSZip } = await import('jszip')
       const zip = new JSZip()
       const usedNames = new Set<string>()
       for (const s of withFiles) {
