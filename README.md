@@ -653,6 +653,36 @@ around that for a two-way bot, and it's a one-time setup per Workspace:
 6. Set the app's status to **Live** and add/publish it to the space you want it in, then
    `@ArcSite /status` to confirm it responds.
 
+## Load speed — shared requests (ARC-321)
+
+Several parts of the app load the same data on their own. On the Dashboard, the Milestones widget
+and the shell's Checklist/Issue/NETA to-do loader each fetched the same CxAlloy checklists,
+issues, status vocabulary, people list and NETA data, and each of those first re-read the project
+settings and the Apps Script URL. A first Dashboard load with every module on made roughly 19 Apps
+Script calls and 30 small Supabase reads, where about 8 and 2 are needed. Apps Script queues calls to
+one deployment, so the duplicates made every call slower.
+
+`src/lib/requestCache.ts` (`shareRequest`) now gives every caller the same request while it's in
+flight and keeps the result briefly afterwards:
+
+| Data | Shared for | Cleared by |
+| --- | --- | --- |
+| Project settings (`arcapp_settings`) | 60 s | any `saveSetting` (Settings saves, default assignees) |
+| CxAlloy Apps Script URL | 5 min | page reload / project switch |
+| CxAlloy sheet reads (checklists, issues, statuses, people) | 15 s | n/a (read-only actions) |
+| NETA Tracker data | 15 s | any `updateNetaField` |
+| Joint Pack data | 15 s | any `logJointPackPhotos` |
+
+A failed request is never kept, so the next try goes out fresh. A Refresh click within 15 s of the
+last load can return that same data, which is the trade-off for sharing it.
+
+`jszip` is now loaded only when a Submittals zip is downloaded, which takes ~97 kB (30 kB gzipped)
+off every page load.
+
+**Not done yet** (bigger, needs LaunchPad's sync): having the CxAlloy checklists/issues already in a
+Supabase table, the way the Equipment Status Tracker's data is synced by a GitHub Action, so the
+Dashboard never waits on Apps Script at all.
+
 ## Dashboard KPI row — real data, not sample numbers
 
 `KpiRow.tsx` was still the original Retool-era mock — all four tiles (Milestones GO, Open to-dos,
