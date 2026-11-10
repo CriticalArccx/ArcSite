@@ -1,0 +1,66 @@
+# Moves the Jira issues a pull request is for to Done when it's merged into main.
+#
+# Which issues: every ARC-123-style key in the PR title or branch name. The PR body is ignored on
+# purpose, because it often links related tickets that aren't finished.
+#
+# Needs two repository secrets (Settings > Secrets and variables > Actions):
+#   JIRA_EMAIL      the Atlassian account the token belongs to
+#   JIRA_API_TOKEN  an API token from https://id.atlassian.com/manage-profile/security/api-tokens
+# If either is missing, the run skips with a warning instead of failing.
+name: Move Jira issues to Done on merge
+
+on:
+  pull_request:
+    types: [closed]
+    branches: [main]
+
+permissions: {}
+
+jobs:
+  jira-done:
+    if: github.event.pull_request.merged == true
+    runs-on: ubuntu-latest
+    steps:
+      - name: Transition referenced issues to Done
+        env:
+          JIRA_BASE: https://criticalarccx.atlassian.net
+          JIRA_EMAIL: ${{ secrets.JIRA_EMAIL }}
+          JIRA_API_TOKEN: ${{ secrets.JIRA_API_TOKEN }}
+          PR_TITLE: ${{ github.event.pull_request.title }}
+          PR_BRANCH: ${{ github.event.pull_request.head.ref }}
+          PR_URL: ${{ github.event.pull_request.html_url }}
+        run: |
+          set -euo pipefail
+          if [ -z "${JIRA_EMAIL}" ] || [ -z "${JIRA_API_TOKEN}" ]; then
+            echo "::warning::JIRA_EMAIL / JIRA_API_TOKEN secrets aren't set, so no Jira issues were moved."
+            exit 0
+          fi
+
+          keys=$(printf '%s\n%s\n' "$PR_TITLE" "$PR_BRANCH" | grep -oiE '\bARC-[0-9]+\b' | tr '[:lower:]' '[:upper:]' | sort -u || true)
+          if [ -z "$keys" ]; then
+            echo "No ARC-### key in the PR title or branch name; nothing to move."
+            exit 0
+          fi
+
+          jira() { curl -sS --fail-with-body -u "${JIRA_EMAIL}:${JIRA_API_TOKEN}" -H 'Content-Type: application/json' "$@"; }
+
+          failed=0
+          for key in $keys; do
+            status=$(jira "$JIRA_BASE/rest/api/3/issue/$key?fields=status" | jq -r '.fields.status.statusCategory.key') || { echo "::error::$key: couldn't read the issue"; failed=1; continue; }
+            if [ "$status" = "done" ]; then
+              echo "$key is already Done."
+              continue
+            fi
+            # Pick the transition that leads to a Done-category status, whatever it's named.
+            tid=$(jira "$JIRA_BASE/rest/api/3/issue/$key/transitions" | jq -r '[.transitions[] | select(.to.statusCategory.key == "done")][0].id // empty')
+            if [ -z "$tid" ]; then
+              echo "::error::$key: no transition to Done is available from its current status."
+              failed=1
+              continue
+            fi
+            jira -X POST "$JIRA_BASE/rest/api/3/issue/$key/transitions" -d "{\"transition\":{\"id\":\"$tid\"}}" > /dev/null
+            jira -X POST "$JIRA_BASE/rest/api/3/issue/$key/comment" -d "$(jq -n --arg url "$PR_URL" \
+              '{body:{type:"doc",version:1,content:[{type:"paragraph",content:[{type:"text",text:"Moved to Done: merged in "},{type:"text",text:$url,marks:[{type:"link",attrs:{href:$url}}]}]}]}}')" > /dev/null
+            echo "$key moved to Done."
+          done
+          exit $failed
