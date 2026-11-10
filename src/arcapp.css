@@ -1101,3 +1101,84 @@ html, body, #root{ margin:0; padding:0; min-height:100%; background:#141718; }
 @media (max-width:1024px){
   .arcapp .eq-scroll{ max-height:64vh; }
 }
+
+/* ---------- Equipment Status Tracker: card board (ARC-324) ----------
+   One column per phase plus Complete. Each column scrolls by itself so a 1,000-card column
+   doesn't push the others off screen. Below 860px the columns stack and scroll as one page. */
+.arcapp .eq-subbar{ display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap; padding:0 20px 12px; }
+.arcapp .eq-subbar .sync-note{ padding:0; margin:0; flex:1 1 320px; }
+.arcapp main.main-full .eq-panel .eq-subbar{ padding:0; margin:10px 0 14px; }
+.arcapp .panel-action-btn.active{ border-color:var(--green-dim); color:var(--green-soft); background:var(--green-tint); }
+
+.arcapp .eq-board-body{ padding:0 20px 16px; }
+.arcapp main.main-full .eq-board-body{ padding:0; }
+.arcapp .eq-board{ display:grid; gap:14px; align-items:start; overflow-x:auto; }
+.arcapp .eq-board-col{
+  background:var(--bg-elev-2); border:1px solid var(--border-strong); border-radius:var(--radius);
+  display:flex; flex-direction:column; max-height:72vh; min-width:0;
+}
+.arcapp main.main-full .eq-board-col{ max-height:calc(100vh - 235px); }
+.arcapp .eq-board-col-header{
+  display:flex; align-items:center; justify-content:space-between; gap:8px;
+  padding:11px 12px 9px; border-bottom:1px solid var(--border); border-top:3px solid var(--border-strong);
+  border-radius:var(--radius) var(--radius) 0 0;
+}
+.arcapp .eq-board-col-complete .eq-board-col-header{ border-top-color:var(--green); }
+.arcapp .eq-board-col-title{ font-family:var(--font-display); font-size:12px; font-weight:700; letter-spacing:0.5px; text-transform:uppercase; color:var(--text); }
+.arcapp .eq-board-col-count{ font-family:var(--font-mono); font-size:11px; color:var(--text-faint); background:var(--bg-elev); border-radius:999px; padding:1px 8px; }
+.arcapp .eq-board-cards{ display:flex; flex-direction:column; gap:9px; padding:10px; overflow-y:auto; }
+.arcapp .eq-board-more{
+  background:none; border:1px dashed var(--border-strong); border-radius:var(--radius-sm); color:var(--text-muted);
+  font-size:12px; padding:8px; cursor:pointer;
+}
+.arcapp .eq-board-more:hover{ border-color:var(--green); color:var(--green); }
+
+.arcapp .eq-card{ background:var(--bg-elev); border:1px solid var(--border-strong); border-radius:var(--radius-sm); padding:10px 11px; }
+.arcapp .eq-card-head{ display:flex; align-items:baseline; justify-content:space-between; gap:8px; margin-bottom:8px; }
+.arcapp .eq-card-asset{ font-family:var(--font-mono); font-size:13px; font-weight:600; color:var(--text); overflow-wrap:anywhere; }
+.arcapp .eq-card-asset a{ color:var(--green-soft); text-decoration:none; }
+.arcapp .eq-card-asset a:hover{ text-decoration:underline; }
+.arcapp .eq-card-area{ font-size:11px; color:var(--text-faint); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:45%; }
+
+.arcapp .eq-card-phases{ list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:4px; }
+.arcapp .eq-card-phase{ display:grid; grid-template-columns:24px minmax(0,1fr) auto; align-items:center; gap:7px; opacity:0.72; }
+.arcapp .eq-card-phase.current{ opacity:1; }
+.arcapp .eq-card-phase-level{ font-family:var(--font-mono); font-size:10.5px; font-weight:700; color:var(--text-muted); }
+.arcapp .eq-card-phase.current .eq-card-phase-level{ color:var(--text); }
+.arcapp .eq-card-pill{
+  font-size:11px; font-weight:600; border-radius:4px; padding:2px 7px;
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis; min-width:0; max-width:100%; justify-self:start;
+}
+.arcapp .eq-card-pill.na{ background:none; color:var(--text-faint); font-weight:400; padding-left:0; }
+.arcapp .eq-card-phase-count{ font-family:var(--font-mono); font-size:10.5px; color:var(--text-faint); white-space:nowrap; }
+
+.arcapp .eq-card-foot{ display:flex; align-items:center; flex-wrap:wrap; gap:6px; margin-top:9px; padding-top:8px; border-top:1px solid var(--border); }
+.arcapp .eq-card-issues{ font-family:var(--font-mono); font-size:10.5px; padding:1px 7px; border-radius:999px; color:var(--text-faint); background:var(--bg-elev-2); }
+.arcapp .eq-card-issues.gating{ color:var(--red); background:var(--red-tint); font-weight:600; }
+.arcapp .eq-card-issues.nongating{ color:var(--amber); background:var(--amber-tint); }
+.arcapp .eq-card-issues-label{ font-size:10.5px; color:var(--text-faint); }
+.arcapp .eq-card-toggle{
+  margin-left:auto; display:flex; align-items:center; gap:3px; background:none; border:none; padding:2px 0;
+  font-size:11.5px; color:var(--text-muted); cursor:pointer;
+}
+.arcapp .eq-card-toggle svg{ width:13px; height:13px; }
+.arcapp .eq-card-toggle:hover{ color:var(--green); }
+
+.arcapp .eq-card-details{ margin-top:8px; display:flex; flex-direction:column; gap:8px; }
+.arcapp .eq-card-detail-group{ display:flex; flex-direction:column; gap:6px; }
+.arcapp .eq-card-items-label{ font-family:var(--font-mono); font-size:10px; text-transform:uppercase; letter-spacing:0.4px; color:var(--text-faint); margin-bottom:3px; }
+.arcapp .eq-card-chips{ display:flex; flex-wrap:wrap; gap:4px; }
+.arcapp .eq-card-chip{
+  display:inline-flex; align-items:center; gap:5px; max-width:100%;
+  font-family:var(--font-mono); font-size:10.5px; color:var(--text); background:var(--bg-elev-2);
+  border:1px solid var(--border); border-radius:4px; padding:1px 2px 1px 6px;
+}
+.arcapp .eq-card-chip a{ color:var(--green-soft); text-decoration:none; }
+.arcapp .eq-card-chip a:hover{ text-decoration:underline; }
+.arcapp .eq-card-chip-status{ font-family:var(--font-body); font-size:10px; border-radius:3px; padding:0 5px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:120px; }
+
+@media (max-width:860px){
+  .arcapp .eq-board{ grid-template-columns:1fr !important; overflow-x:visible; }
+  .arcapp .eq-board-col, .arcapp main.main-full .eq-board-col{ max-height:none; }
+  .arcapp .eq-board-cards{ overflow-y:visible; }
+}

@@ -1,11 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useOutletContext } from 'react-router-dom'
-import { ChevronDown, ChevronUp, Eraser, FileDown, RefreshCw, Search as SearchIcon, Settings as SettingsIcon } from 'lucide-react'
+import { ChevronDown, ChevronUp, Eraser, FileDown, Filter, RefreshCw, Search as SearchIcon, Settings as SettingsIcon } from 'lucide-react'
 import { useGetEquipmentTrackerData } from '../../../lib/api'
 import type { EqPhaseRule, EquipmentTrackerConfig, EquipmentTrackerRow } from '../../../lib/api'
 import { CURRENT_PROJECT } from '../../../lib/project'
 import {
+  buildAssetCards,
   combineOpenIssues,
   computeMaxCols,
   computeRowFilterValues,
@@ -14,7 +15,9 @@ import {
   type CellType,
   type CombinedOpen,
   type MaxCols,
+  type PhaseLevel,
 } from '../lib/equipmentTracker'
+import EquipmentStatusBoard from './EquipmentStatusBoard'
 import EquipmentTrackerPdfModal from './EquipmentTrackerPdfModal'
 import EquipmentTrackerSettingsModal from './EquipmentTrackerSettingsModal'
 import ModuleSettingsSection from './ModuleSettingsSection'
@@ -32,6 +35,17 @@ type RowMeta = {
   row: EquipmentTrackerRow
   filterValues: ReturnType<typeof computeRowFilterValues>
   issuesOpen: CombinedOpen
+}
+
+type ViewMode = 'cards' | 'grid'
+const VIEW_STORAGE_KEY = 'arcsite_eq_tracker_view'
+
+function readStoredView(): ViewMode {
+  try {
+    return localStorage.getItem(VIEW_STORAGE_KEY) === 'grid' ? 'grid' : 'cards'
+  } catch {
+    return 'cards'
+  }
 }
 
 const COLUMN_LABELS = ['Asset', 'Area', 'L2 Gate', 'L2 Status', 'L3 Gate', 'L3 Status', 'L4 Gate', 'L4 Status', 'Open Issues']
@@ -68,6 +82,7 @@ export default function EquipmentTrackerPanel() {
   const [pdfOpen, setPdfOpen] = useState(false)
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [configModalOpen, setConfigModalOpen] = useState(false)
+  const [view, setView] = useState<ViewMode>(readStoredView)
   const rowRefs = useRef(new Map<RowMeta, HTMLDivElement>())
 
   useEffect(() => {
@@ -108,7 +123,7 @@ export default function EquipmentTrackerPanel() {
   }, [debouncedSearch, activeFilters])
 
   useEffect(() => {
-    if (!searchMatches.length) return
+    if (view !== 'grid' || !searchMatches.length) return
     const match = searchMatches[Math.min(searchIndex, searchMatches.length - 1)]
     if (!match) return
     const el = rowRefs.current.get(match)
@@ -124,7 +139,37 @@ export default function EquipmentTrackerPanel() {
     }
     if (Object.keys(needsExpand).length) setExpanded((e) => ({ ...e, ...needsExpand }))
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [searchIndex, searchMatches])
+  }, [searchIndex, searchMatches, view])
+
+  function changeView(next: ViewMode) {
+    setView(next)
+    try {
+      localStorage.setItem(VIEW_STORAGE_KEY, next)
+    } catch {
+      // Storage blocked (private window etc.): the choice just isn't remembered.
+    }
+  }
+
+  // Card view: search narrows the cards instead of stepping through matches the way the grid does.
+  const cardLevels: PhaseLevel[] = useMemo(() => {
+    if (!config) return []
+    const out: PhaseLevel[] = []
+    if (!(config.showL2Gate === false && config.showL2Supp === false)) out.push('L2')
+    if (!(config.showL3Gate === false && config.showL3Supp === false)) out.push('L3')
+    if (!(config.showL4Gate === false && config.showL4Supp === false)) out.push('L4')
+    return out
+  }, [config])
+
+  const cards = useMemo(() => {
+    if (!config || view !== 'cards') return []
+    return buildAssetCards(
+      (debouncedSearch ? searchMatches : visibleRows).map((m) => m.row),
+      maxCols,
+      cardLevels,
+      config,
+      phaseRules,
+    )
+  }, [config, view, debouncedSearch, searchMatches, visibleRows, maxCols, cardLevels, phaseRules])
 
   function navigateSearch(dir: number) {
     if (!searchMatches.length) return
@@ -292,15 +337,33 @@ export default function EquipmentTrackerPanel() {
         <div className="panel-header-right" style={{ gap: 10 }}>
           <div className="eq-search">
             <SearchIcon />
-            <input type="text" placeholder="Find instance…" value={search} onChange={(e) => setSearch(e.target.value)} />
-            <span className="eq-search-count">{searchMatches.length ? `${searchIndex + 1}/${searchMatches.length}` : '0/0'}</span>
-            <button type="button" onClick={() => navigateSearch(-1)} aria-label="Previous match">
-              <ChevronUp />
-            </button>
-            <button type="button" onClick={() => navigateSearch(1)} aria-label="Next match">
-              <ChevronDown />
-            </button>
+            <input
+              type="text"
+              placeholder={view === 'cards' ? 'Filter assets…' : 'Find instance…'}
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              aria-label={view === 'cards' ? 'Filter assets' : 'Find instance'}
+            />
+            {view === 'grid' ? (
+              <>
+                <span className="eq-search-count">{searchMatches.length ? `${searchIndex + 1}/${searchMatches.length}` : '0/0'}</span>
+                <button type="button" onClick={() => navigateSearch(-1)} aria-label="Previous match">
+                  <ChevronUp />
+                </button>
+                <button type="button" onClick={() => navigateSearch(1)} aria-label="Next match">
+                  <ChevronDown />
+                </button>
+              </>
+            ) : (
+              debouncedSearch && <span className="eq-search-count">{searchMatches.length}</span>
+            )}
           </div>
+          {view === 'cards' && (
+            <button type="button" className={activeFilters[1] ? 'panel-action-btn active' : 'panel-action-btn'} onClick={(e) => openFilter(e, 1)}>
+              <Filter style={{ width: 14, height: 14 }} />
+              {config.customHeaders.areaPrefix || 'Area'}
+            </button>
+          )}
           {hasFilters && (
             <button type="button" className="panel-action-btn" onClick={clearAllFilters}>
               <Eraser style={{ width: 14, height: 14 }} />
@@ -322,10 +385,21 @@ export default function EquipmentTrackerPanel() {
           </button>
         </div>
       </div>
-      <div className="sync-note">
-        Mirrors LaunchPad&apos;s own Equipment Status Tracker (L2/L3/L4 phase tracking, synced from
-        the project sheet) — grid, filtering, search, PDF export, and (for admins) System Config +
-        the Phase Rules Engine.
+      <div className="eq-subbar">
+        <div className="sync-note">
+          {view === 'cards'
+            ? 'One card per asset, in the phase it’s in now. A phase counts as finished when its status matches a Cx Complete or Closed status in System Config.'
+            : 'Mirrors LaunchPad’s own Equipment Status Tracker (L2/L3/L4 phase tracking, synced from the project sheet).'}
+        </div>
+        <div className="ts-filter-group">
+          <span className="ts-filter-label">View:</span>
+          <button type="button" className={`ts-filter-btn${view === 'cards' ? ' active' : ''}`} onClick={() => changeView('cards')} aria-pressed={view === 'cards'}>
+            Cards
+          </button>
+          <button type="button" className={`ts-filter-btn${view === 'grid' ? ' active' : ''}`} onClick={() => changeView('grid')} aria-pressed={view === 'grid'}>
+            Grid
+          </button>
+        </div>
       </div>
       <div style={{ padding: '0 20px 12px' }}>
         <ModuleSettingsSection open={settingsOpen} onOpenChange={setSettingsOpen}>
@@ -340,6 +414,13 @@ export default function EquipmentTrackerPanel() {
         </ModuleSettingsSection>
       </div>
 
+      {view === 'cards' && (
+        <div className="panel-body eq-board-body">
+          <EquipmentStatusBoard cards={cards} levels={cardLevels} config={config} />
+        </div>
+      )}
+
+      {view === 'grid' && (
       <div className="panel-body no-pad">
         <div className="eq-scroll">
           <div className="eq-header-sticky">
@@ -542,6 +623,7 @@ export default function EquipmentTrackerPanel() {
           </div>
         </div>
       </div>
+      )}
 
       {filterCol !== null && filterAnchor && (
         <FilterDropdown

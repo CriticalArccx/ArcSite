@@ -880,6 +880,17 @@ full mirror rather than a read-only view.
   Supabase, the same tables LaunchPad's own tracker reads. LaunchPad periodically syncs the
   underlying Google Sheet into the `data` table itself (a GitHub Action, not this app); both tables
   were already anon-readable and shared, so the read side needed zero schema/RLS changes.
+- **Cards (default view, ARC-324)**: one card per asset, in columns by the phase it's in now: L2,
+  L3, L4, Complete (a phase hidden in System Config gets no column). A card shows each phase's
+  colored Overall Status with its open/total CHK or test count, plus the asset's open gating and
+  non-gating issues; **Details** lists the gate CLs, the open CHKs/tests and the open issues, each
+  linked. An asset sits in the first phase that applies and isn't finished; a phase counts as
+  finished when its Overall Status matches a **Cx Complete** or **Closed** status in System Config
+  (**Tests Closed** for L4), so the board follows each project's own status names. Blank, N/A and
+  "No CL / No L4" phases are skipped. In this view the search box filters the cards, and an Area
+  button opens the same Area filter as the grid. The Cards/Grid choice is remembered per browser.
+  Columns draw 60 cards at a time with a "Show more" button. Code: `EquipmentStatusBoard.tsx` and
+  `buildAssetCards` in `lib/equipmentTracker.ts`.
 - **Grid**: sticky-header, horizontally + vertically scrolling table — frozen Asset/Area columns,
   then L2/L3/L4 phase groups (Gate CL column(s) + a colored Overall Status summary, each
   expandable to show every individual Support CL), then an Asset Issues group (colored open-issue
