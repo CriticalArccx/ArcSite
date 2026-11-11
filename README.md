@@ -653,6 +653,65 @@ around that for a two-way bot, and it's a one-time setup per Workspace:
 6. Set the app's status to **Live** and add/publish it to the space you want it in, then
    `@ArcSite /status` to confirm it responds.
 
+## Google Tasks sync (ARC-322)
+
+**Added 2026-11-10.** Each person can click **Connect Google Tasks** on the To-Do page and approve
+access to their own Google Tasks, once. From then on:
+
+- Every To-Do assigned to them, directly or through a team they're on, is kept in an **ArcSite**
+  list in their Google Tasks. That's also the Tasks panel in Google Calendar. Title, due date,
+  priority, system and project come across, plus a link back to the To-Do page.
+- Completing or reopening a To-Do in either place updates the other. For a team To-Do, one
+  member completing it in Google completes it in ArcSite and for the rest of the team. If both
+  sides changed between two syncs, ArcSite wins.
+- Editing, reassigning or deleting a To-Do in ArcSite updates or removes the Google task.
+  Deleting a task in Google only stops syncing it for that person; the To-Do stays in ArcSite.
+- To-Dos already done when someone connects aren't copied over.
+- No notifications go out: tasks created through the API don't notify anyone.
+- **Disconnect** removes the ArcSite list from their Google Tasks and revokes ArcSite's access.
+
+People who don't connect see no change. Everything runs in the `google-tasks` Edge Function
+(`supabase/functions/google-tasks/index.ts`, header comment has the details). Google tokens live
+in `arcapp_google_tasks_accounts`, which has RLS on and no policies, so only the function can
+read them. ArcSite pushes right after any To-Do or team change, the To-Do page checks Google
+every 2 minutes while it's open, and a scheduled job checks every 5 minutes.
+
+### Setup, once
+
+1. **Tables**: run the "Google Tasks sync (ARC-322)" block at the end of `supabase/schema.sql`.
+2. **Google Cloud**, signed in as arclab@criticalarccx.com so the project is owned by the shared
+   account:
+   - Create a project, then enable the **Google Tasks API**.
+   - **OAuth consent screen**: User type **Internal** (only criticalarccx.com accounts can
+     connect, and no Google review is needed). Add the scopes `openid`, `email` and
+     `https://www.googleapis.com/auth/tasks`.
+   - **Credentials → Create credentials → OAuth client ID → Web application**. Authorized redirect
+     URI: `https://<project-ref>.supabase.co/functions/v1/google-tasks/callback`. Copy the client
+     ID and secret.
+3. **Deploy and set secrets**:
+   ```
+   supabase functions deploy google-tasks --no-verify-jwt
+   supabase secrets set GOOGLE_CLIENT_ID=... GOOGLE_CLIENT_SECRET=... \
+     APP_ORIGINS="https://<production ArcSite URL>,https://<vercel project>-*.vercel.app" \
+     GOOGLE_TASKS_SYNC_SECRET=<long random value>
+   ```
+   `--no-verify-jwt` is needed because Google's redirect back carries no Supabase session; every
+   other action checks the caller's session and `arcapp_authorized_users` itself. The first
+   `APP_ORIGINS` entry is used for the "Open in ArcSite" link in each task, so make it production.
+4. **Scheduled sync** (picks up completions made in Google while nobody has ArcSite open). In the
+   Supabase SQL editor, with the `pg_cron` and `pg_net` extensions enabled:
+   ```sql
+   select cron.schedule('google-tasks-sync', '*/5 * * * *', $$
+     select net.http_post(
+       url := 'https://<project-ref>.supabase.co/functions/v1/google-tasks',
+       headers := '{"Content-Type":"application/json","x-sync-secret":"<GOOGLE_TASKS_SYNC_SECRET>"}'::jsonb,
+       body := '{"action":"sync"}'::jsonb
+     )
+   $$);
+   ```
+
+Until the function is deployed and configured, the Connect button doesn't appear.
+
 ## Load speed — shared requests (ARC-321)
 
 Several parts of the app load the same data on their own. On the Dashboard, the Milestones widget

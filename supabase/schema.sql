@@ -336,3 +336,40 @@ CREATE TABLE IF NOT EXISTS arcapp_lessons_learned (
   updated_at timestamptz NOT NULL DEFAULT now(),
   created_at timestamptz NOT NULL DEFAULT now()
 );
+
+-- ---------------------------------------------------------------------------
+-- NOT YET APPLIED — Google Tasks sync (ARC-322, requested 2026-11-10).
+--
+-- Each person can connect their own Google account from the To-Do page; their To-Dos (assigned to
+-- them directly or to a team they're on) then appear in an "ArcSite" list in their Google Tasks,
+-- and marking one complete in either place updates the other. The google-tasks Edge Function does
+-- all of it (supabase/functions/google-tasks/index.ts).
+--
+-- Both tables hold Google refresh tokens or sync state, so RLS is on with NO policies: only the
+-- Edge Function, using the service role, can read or write them. The browser never sees a token.
+-- ---------------------------------------------------------------------------
+
+CREATE TABLE IF NOT EXISTS arcapp_google_tasks_accounts (
+  email text PRIMARY KEY,          -- the ArcSite sign-in email, lowercased
+  google_email text NOT NULL,      -- the Google account that approved access (must match email)
+  refresh_token text NOT NULL,
+  tasklist_id text,                -- the "ArcSite" list in that person's Google Tasks
+  connected_at timestamptz NOT NULL DEFAULT now(),
+  last_sync_at timestamptz,
+  last_error text
+);
+ALTER TABLE arcapp_google_tasks_accounts ENABLE ROW LEVEL SECURITY;
+
+-- One row per (To-Do, person) that has a Google task. No foreign key to arcapp_tasks on purpose:
+-- when a To-Do is deleted, the sync still needs this row to delete the matching Google task.
+CREATE TABLE IF NOT EXISTS arcapp_google_task_links (
+  task_id uuid NOT NULL,
+  email text NOT NULL,
+  google_task_id text NOT NULL,
+  synced_done boolean NOT NULL,          -- done state both sides agreed on at the last sync
+  synced_hash text NOT NULL,             -- title/notes/due last pushed, to skip no-op updates
+  google_deleted boolean NOT NULL DEFAULT false, -- the person deleted it in Google; don't re-add
+  updated_at timestamptz NOT NULL DEFAULT now(),
+  PRIMARY KEY (task_id, email)
+);
+ALTER TABLE arcapp_google_task_links ENABLE ROW LEVEL SECURITY;
