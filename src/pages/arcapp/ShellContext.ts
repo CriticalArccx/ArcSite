@@ -18,6 +18,8 @@ export type ShellContext = {
   tasksError: string
   onSaveTask: (input: TaskInput) => Promise<void>
   onDeleteTask: (id: string) => Promise<void>
+  /** Refetches the To-Do list, e.g. after a Google Tasks sync pulled in completions (ARC-322). */
+  onReloadTasks: () => void
 
   teams: Team[]
   teamsLoading: boolean

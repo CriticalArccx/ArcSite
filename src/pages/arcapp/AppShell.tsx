@@ -6,6 +6,7 @@ import {
   useGetSchedule, useGetResultOptions, useSaveResult, useLogTamperSeals, useSubmitRtft,
   useGetSettings, useSaveSetting, useSaveDefaultAssignee, useGetWorkflows, useGetWorkflowItems, useGetCxAlloyLinkBase, parseCxAlloyLinkBase,
   useGetTasks, useSaveTask, useSetTaskDone, useSetTaskStatus, useDeleteTask, useGetTeams, useSaveTeam, useDeleteTeam,
+  queueGoogleTasksPush,
 } from '../../lib/api'
 import type { TaskInput, DefaultAssignee, MilestoneStatusStyles } from '../../lib/api'
 import { DEFAULT_MILESTONE_STATUS_STYLES } from '../../lib/api'
@@ -263,6 +264,7 @@ export default function AppShell() {
     if (!current) return
     const done = !current.done
     await setTaskDoneFn.trigger({ id, done }).result
+    queueGoogleTasksPush()
     setTodos((prev) =>
       prev.map((t) => (t.id === id ? { ...t, done, status: done ? 'done' : 'todo', completedAt: done ? new Date().toISOString() : null } : t)),
     )
@@ -270,6 +272,7 @@ export default function AppShell() {
 
   async function moveTaskStatus(id: string, status: TaskStatus) {
     await setTaskStatusFn.trigger({ id, status }).result
+    queueGoogleTasksPush()
     setTodos((prev) =>
       prev.map((t) => (t.id === id ? { ...t, status, done: status === 'done', completedAt: status === 'done' ? new Date().toISOString() : null } : t)),
     )
@@ -279,12 +282,14 @@ export default function AppShell() {
     async (input: TaskInput) => {
       await saveTaskFn.trigger(input).result
       void tasksFn.trigger()
+      queueGoogleTasksPush()
     },
     [saveTaskFn, tasksFn],
   )
   const deleteTaskRecord = useCallback(
     async (id: string) => {
       await deleteTaskFn.trigger({ id }).result
+      queueGoogleTasksPush()
       setTodos((prev) => prev.filter((t) => t.id !== id))
     },
     [deleteTaskFn],
@@ -294,12 +299,15 @@ export default function AppShell() {
     async (input: { id?: string; name: string; members: TeamMember[] }) => {
       await saveTeamFn.trigger(input).result
       void teamsFn.trigger()
+      // Team membership decides whose Google Tasks a team To-Do goes to.
+      queueGoogleTasksPush()
     },
     [saveTeamFn, teamsFn],
   )
   const deleteTeamRecord = useCallback(
     async (id: string) => {
       await deleteTeamFn.trigger({ id }).result
+      queueGoogleTasksPush()
       setTeams((prev) => prev.filter((t) => t.id !== id))
       // A deleted team's tasks fall back to unassigned server-side (ON DELETE SET NULL) — refetch
       // so the task list reflects that instead of still showing the removed team.
@@ -376,6 +384,7 @@ export default function AppShell() {
     tasksError: tasksFn.error ?? '',
     onSaveTask: saveTaskRecord,
     onDeleteTask: deleteTaskRecord,
+    onReloadTasks: () => void tasksFn.trigger(),
 
     teams,
     teamsLoading: teamsFn.loading || !teamsFn.data,

@@ -2557,6 +2557,60 @@ export function useDeleteTask() {
 }
 
 // ---------------------------------------------------------------------------
+// Google Tasks sync (ARC-322) — everything goes through the `google-tasks` Edge Function, which
+// holds each person's Google token server-side. See that file's header for how the sync works.
+// ---------------------------------------------------------------------------
+
+export type GoogleTasksStatus = {
+  configured: boolean
+  connected: boolean
+  googleEmail: string | null
+  lastSyncAt: string | null
+  lastError: string | null
+}
+
+async function invokeGoogleTasks<T>(body: Record<string, unknown>): Promise<T> {
+  const { data, error } = await supabase.functions.invoke('google-tasks', { body })
+  if (error) {
+    const ctx = (error as { context?: Response }).context
+    const detail = ctx && typeof ctx.json === 'function' ? await ctx.json().catch(() => null) : null
+    throw new Error(detail?.error || error.message || 'Google Tasks is unavailable.')
+  }
+  return data as T
+}
+
+export function getGoogleTasksStatus(): Promise<GoogleTasksStatus> {
+  return invokeGoogleTasks<GoogleTasksStatus>({ action: 'status' })
+}
+
+/** Sends the browser to Google's consent screen; Google returns to /todo?gtasks=connected|error. */
+export async function connectGoogleTasks(): Promise<void> {
+  const { url } = await invokeGoogleTasks<{ url: string }>({ action: 'connect', returnTo: window.location.origin })
+  window.location.assign(url)
+}
+
+export async function disconnectGoogleTasks(): Promise<void> {
+  await invokeGoogleTasks({ action: 'disconnect' })
+}
+
+/** Runs a sync for everyone connected. `pulled` is how many To-Dos changed because of something
+ * done in Google Tasks, i.e. whether the To-Do list needs reloading. */
+export function syncGoogleTasks(): Promise<{ pulled: number; myError: string | null }> {
+  return invokeGoogleTasks({ action: 'sync' })
+}
+
+let pushTimer: ReturnType<typeof setTimeout> | undefined
+/** After a To-Do is created, edited, completed or deleted: push it to Google Tasks shortly after.
+ * Debounced so ticking off several To-Dos runs one sync, and best-effort, so a Google problem (or
+ * the function not being deployed yet) never gets in the way of the To-Do list itself. */
+export function queueGoogleTasksPush(): void {
+  clearTimeout(pushTimer)
+  pushTimer = setTimeout(() => {
+    syncGoogleTasks().catch(() => {})
+  }, 1500)
+}
+
+// ---------------------------------------------------------------------------
 // authorized users — who may sign in to ArcSite at all, and whether they're an admin or editor
 // (arcapp_authorized_users). As of 2026-09-24 this table is the entire access-control model for
 // ArcSite: no `role` here means no access to the site at all (see the `!user` gate in AppShell.tsx)

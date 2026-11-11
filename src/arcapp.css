@@ -276,6 +276,15 @@ html, body, #root{ margin:0; padding:0; min-height:100%; background:#141718; }
 .arcapp .conn-pill.loading{ color:var(--text-muted); background:var(--bg-elev-2); }
 .arcapp .conn-pill.error{ color:var(--red); background:var(--red-tint); }
 .arcapp .panel-header-right{ display:flex; align-items:center; gap:8px; }
+/* ARC-322: Google Tasks connect/sync control in the To-Do panel header */
+.arcapp .gtasks{ display:flex; flex-direction:column; align-items:flex-end; gap:4px; }
+.arcapp .gtasks-row{ display:flex; align-items:center; gap:8px; flex-wrap:wrap; justify-content:flex-end; }
+.arcapp .gtasks-label{ font-family:var(--font-mono); font-size:11.5px; color:var(--text-muted); white-space:nowrap; }
+.arcapp .gtasks-icon-btn{ display:flex; align-items:center; padding:6px 8px; }
+.arcapp .gtasks .spin{ animation:arc-spin 0.9s linear infinite; }
+.arcapp .gtasks-msg{ margin-top:0; max-width:420px; text-align:right; }
+.arcapp .gtasks-link{ background:none; border:none; padding:0; color:inherit; text-decoration:underline; cursor:pointer; font:inherit; }
+@media (max-width:640px){ .arcapp .gtasks{ align-items:flex-start; } .arcapp .gtasks-row{ justify-content:flex-start; } .arcapp .gtasks-msg{ text-align:left; } }
 .arcapp .icon-btn{
   background:var(--bg-elev-2); border:1px solid var(--border); border-radius:var(--radius-sm); color:var(--text-muted);
   width:30px; height:30px; display:flex; align-items:center; justify-content:center;

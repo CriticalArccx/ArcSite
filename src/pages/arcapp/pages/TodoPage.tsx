@@ -8,6 +8,7 @@ import { isTodoMine } from '../utils'
 import { TodoList } from '../components/TodoPanel'
 import TodoBoard from '../components/TodoBoard'
 import TeamsManager from '../components/TeamsManager'
+import GoogleTasksConnect from '../components/GoogleTasksConnect'
 import { MyItemRow, MySummaryCard, todoSummaryRoute } from '../components/OpenItemsTodoPanel'
 import PersonSelect, { useAuthorizedUsersOptions } from '../components/PersonSelect'
 
@@ -138,7 +139,8 @@ export default function TodoPage() {
             <h2 className="panel-title">Your To-Dos</h2>
             <span className="panel-count">{open} open</span>
           </div>
-          <div className="panel-header-right">
+          <div className="panel-header-right" style={{ flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+            <GoogleTasksConnect signedIn={Boolean(currentUserEmail)} onPulled={ctx.onReloadTasks} />
             {!formOpen && (
               <button className="seal-add-btn" style={{ width: 'auto', margin: 0, display: 'flex', alignItems: 'center', gap: 7 }} onClick={openNew}>
                 <Plus style={{ width: 14, height: 14 }} /> New Task
